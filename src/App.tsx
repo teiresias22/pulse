@@ -6,6 +6,8 @@ import { isTleStale, loadTle, makePropagator, orbitPath, type Tle } from './sour
 import { Header } from './components/Header.tsx';
 import { Legend } from './components/Legend.tsx';
 import { EventCard } from './components/EventCard.tsx';
+import { Fallback } from './components/Fallback.tsx';
+import { hasWebGL } from './lib/webgl.ts';
 import { Scrubber } from './components/Scrubber.tsx';
 import { timeRange, visibleLaunches, visibleQuakes } from './lib/timeline.ts';
 import { decodeHash, encodeHash } from './lib/hash.ts';
@@ -13,6 +15,7 @@ import { HOUR, LAYERS, MINUTE, SPEEDS, type LayerKey, type LayerStatus, type Loa
 import './App.css';
 
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const webgl = hasWebGL();
 
 export default function App() {
   const [initial] = useState(() => decodeHash(window.location.hash));
@@ -181,6 +184,8 @@ export default function App() {
   };
   const shareUrl = () =>
     `${window.location.origin}${window.location.pathname}${encodeHash({ t, layers })}`;
+
+  if (!webgl) return <Fallback quakes={quakes} launches={launches} />;
 
   return (
     <div className="app">
