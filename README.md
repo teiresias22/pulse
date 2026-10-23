@@ -30,8 +30,12 @@ npm run check   # node --test 'src/**/*.check.mjs' — 실제 응답을 자른 f
 npm run lint && npm run build
 ```
 
-`earth-night.jpg` — NASA Earth Observatory "Earth at Night" (public domain), via three-globe example images
-`night-sky.png` — from [three-globe](https://github.com/vasturiano/three-globe) example images (MIT License)
+`earth-night.webp` — NASA Earth Observatory "Earth at Night" (public domain), via three-globe example images
+`night-sky.webp` — from [three-globe](https://github.com/vasturiano/three-globe) example images (MIT License)
+
+## 분석
+
+방문 수와 몇 가지 이벤트(재생, 레이어 켜고 끄기, 카드 열기, ISS 따라가기, 링크 복사)를 Google Analytics 4로 센다. 측정 ID는 빌드 때 `VITE_GA_ID`로 넣고, 없으면 분석 스크립트를 불러오지 않는다.
 
 ## 라이선스
 

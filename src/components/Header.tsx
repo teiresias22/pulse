@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { LAYERS, type LayerKey, type LayerStatus } from '../model.ts';
 import { fmtAgo, msg } from '../i18n.ts';
+import { track } from '../lib/analytics.ts';
 
 const ICON: Record<LayerKey, string> = { quake: '●', launch: '▲', iss: '◉' };
 
@@ -19,6 +20,7 @@ export function Header(p: Props) {
   const share = async () => {
     try {
       await navigator.clipboard.writeText(p.shareUrl());
+      track('share', { method: 'copy_link' });
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
     } catch {

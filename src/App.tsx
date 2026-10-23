@@ -11,6 +11,7 @@ import { hasWebGL } from './lib/webgl.ts';
 import { Scrubber } from './components/Scrubber.tsx';
 import { timeRange, visibleLaunches, visibleQuakes } from './lib/timeline.ts';
 import { decodeHash, encodeHash } from './lib/hash.ts';
+import { track } from './lib/analytics.ts';
 import { HOUR, LAYERS, MINUTE, SPEEDS, type LayerKey, type LayerStatus, type Loaded, type PulseEvent, type Selection } from './model.ts';
 import './App.css';
 
@@ -148,6 +149,7 @@ export default function App() {
       // 끝에서 재생을 누르면 처음부터
       simRef.current = tRef.current >= range.max ? range.min : tRef.current;
       setT(simRef.current);
+      track('play');
     }
     setPlaying(!playing);
   }, [playing, range.min, range.max]);
@@ -182,6 +184,15 @@ export default function App() {
       setFollow(false);
     }
     setLayers((ls) => LAYERS.filter((l) => (l === k ? !ls.includes(l) : ls.includes(l))));
+    track('layer_toggle', { layer: k, on: !layers.includes(k) });
+  };
+  const select = (s: Selection) => {
+    setSelected(s);
+    track('select_content', { content_type: s.kind === 'iss' ? 'iss' : s.event.kind });
+  };
+  const followIss = (f: boolean) => {
+    setFollow(f);
+    if (f) track('follow_iss');
   };
   const shareUrl = () =>
     `${window.location.origin}${window.location.pathname}${encodeHash({ t, layers })}`;
@@ -199,7 +210,7 @@ export default function App() {
         issStale={issStale}
         reducedMotion={reducedMotion}
         follow={follow}
-        onSelect={setSelected}
+        onSelect={select}
         onUserInteract={() => setFollow(false)}
       />
       <Header
@@ -219,7 +230,7 @@ export default function App() {
           iss={iss}
           issStale={issStale}
           follow={follow}
-          onFollow={setFollow}
+          onFollow={followIss}
           onClose={() => {
             setSelected(null);
             setFollow(false);
