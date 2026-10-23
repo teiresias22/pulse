@@ -1,18 +1,27 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { GlobeView } from './components/GlobeView.tsx';
 import { loadQuakes } from './sources/usgs.ts';
 import { loadLaunches } from './sources/launches.ts';
 import { isTleStale, loadTle, makePropagator, orbitPath, type Tle } from './sources/iss.ts';
-import { visibleLaunches, visibleQuakes } from './lib/timeline.ts';
-import { MINUTE, type LayerKey, type LayerStatus, type Loaded, type PulseEvent, type Selection } from './model.ts';
+import { Scrubber, SPEEDS } from './components/Scrubber.tsx';
+import { timeRange, visibleLaunches, visibleQuakes } from './lib/timeline.ts';
+import { decodeHash, encodeHash } from './lib/hash.ts';
+import { HOUR, MINUTE, type LayerKey, type LayerStatus, type Loaded, type PulseEvent, type Selection } from './model.ts';
 import './App.css';
 
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 export default function App() {
-  const [t, setT] = useState(() => Date.now());
-  const [live] = useState(true);
-  const [layers] = useState<LayerKey[]>(['quake', 'launch', 'iss']);
+  const [initial] = useState(() => decodeHash(window.location.hash));
+  const [anchor] = useState(() => Date.now()); // 스크러버 범위 기준(페이지를 연 시각)
+  const range = timeRange(anchor);
+  const [live, setLive] = useState(initial.t === null);
+  const [t, setT] = useState(() =>
+    initial.t === null ? Date.now() : Math.min(range.max, Math.max(range.min, initial.t)),
+  );
+  const [layers] = useState<LayerKey[]>(initial.layers); // Task 8에서 [layers, setLayers]로 바꾼다
+  const [playing, setPlaying] = useState(false);
+  const [speed, setSpeed] = useState(SPEEDS[0]);
   const [quakes, setQuakes] = useState<PulseEvent[]>([]);
   const [launches, setLaunches] = useState<PulseEvent[]>([]);
   const [tle, setTle] = useState<Tle | null>(null);
@@ -74,6 +83,77 @@ export default function App() {
     };
   }, [live, load]);
 
+  // 재생: rAF로 시뮬레이션 시간을 쌓고, 화면 갱신(setT)은 초당 10회로 제한한다
+  const tRef = useRef(t);
+  useEffect(() => {
+    tRef.current = t;
+  });
+  useEffect(() => {
+    if (!playing) return;
+    let raf = 0;
+    let last = performance.now();
+    let lastSet = last;
+    let simT = tRef.current;
+    const step = (now: number) => {
+      simT = Math.min(range.max, simT + ((now - last) / 1000) * speed);
+      last = now;
+      if (now - lastSet >= 100 || simT >= range.max) {
+        lastSet = now;
+        setT(simT);
+      }
+      if (simT >= range.max) {
+        setPlaying(false);
+        return;
+      }
+      raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [playing, speed, range.max]);
+
+  // 해시: 재생 중엔 쓰지 않고, 멈춘 뒤 0.5초 지나 한 번(Safari는 replaceState 횟수를 제한한다)
+  useEffect(() => {
+    if (playing) return;
+    const id = window.setTimeout(() => {
+      history.replaceState(null, '', encodeHash({ t: live ? null : t, layers }));
+    }, 500);
+    return () => window.clearTimeout(id);
+  }, [playing, live, t, layers]);
+
+  const scrubTo = useCallback(
+    (next: number) => {
+      setLive(false);
+      setT(Math.min(range.max, Math.max(range.min, next)));
+    },
+    [range.min, range.max],
+  );
+  const goLive = useCallback(() => {
+    setPlaying(false);
+    setLive(true);
+    setT(Date.now());
+  }, []);
+  const togglePlay = useCallback(() => {
+    setLive(false);
+    // 끝에서 재생을 누르면 처음부터(재생 중엔 끝에 닿는 순간 멈추므로 이 조건은 시작할 때만 맞는다)
+    if (tRef.current >= range.max) setT(range.min);
+    setPlaying((p) => !p);
+  }, [range.min, range.max]);
+
+  // 키보드: ←→ ±1시간, Space 재생. 입력 요소에 포커스가 있으면 그 요소에 맡긴다
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      if (tag === 'INPUT' || tag === 'BUTTON' || tag === 'A') return;
+      if (e.key === 'ArrowLeft') scrubTo(tRef.current - HOUR);
+      else if (e.key === 'ArrowRight') scrubTo(tRef.current + HOUR);
+      else if (e.key === ' ') togglePlay();
+      else return;
+      e.preventDefault();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [scrubTo, togglePlay]);
+
   const positionAt = useMemo(() => (tle ? makePropagator(tle) : null), [tle]);
   const iss = layers.includes('iss') && positionAt ? positionAt(t) : null;
   const orbit = iss && positionAt ? orbitPath(positionAt, t) : [];
@@ -91,6 +171,19 @@ export default function App() {
         follow={follow}
         onSelect={setSelected}
         onUserInteract={() => setFollow(false)}
+      />
+      <Scrubber
+        t={t}
+        min={range.min}
+        max={range.max}
+        now={live ? t : Date.now()}
+        live={live}
+        playing={playing}
+        speed={speed}
+        onScrub={scrubTo}
+        onTogglePlay={togglePlay}
+        onSpeed={setSpeed}
+        onLive={goLive}
       />
     </div>
   );

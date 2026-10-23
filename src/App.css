@@ -44,3 +44,51 @@ body {
 .marker-upcoming { color: var(--warn); }
 .marker-iss { font-size: 18px; }
 .marker:focus-visible { outline: 2px solid var(--accent); border-radius: 50%; }
+
+.panel {
+  position: absolute;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.btn {
+  min-height: 32px;
+  padding: 4px 10px;
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.btn:hover { border-color: var(--muted); }
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.btn-on { background: rgba(123, 223, 242, 0.15); border-color: var(--accent); color: var(--accent); }
+
+.scrubber {
+  left: var(--gutter);
+  right: var(--gutter);
+  bottom: calc(var(--gutter) + env(safe-area-inset-bottom));
+  padding: 10px 14px 8px;
+}
+.scrubber-row { display: flex; align-items: center; gap: 8px; }
+.scrubber-time { flex: 1; font-size: 13px; color: var(--muted); text-align: right; }
+.scrubber-track { position: relative; margin-top: 8px; }
+.scrubber-track input { width: 100%; height: 28px; margin: 0; accent-color: var(--accent); }
+.scrubber-now {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  width: 2px;
+  background: var(--warn);
+  pointer-events: none;
+}
+.scrubber-labels { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); }
+
+@media (max-width: 640px) {
+  .scrubber-track input { height: 44px; }
+}
