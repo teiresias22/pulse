@@ -32,3 +32,7 @@ npm run lint && npm run build
 
 `earth-night.jpg` — NASA Earth Observatory "Earth at Night" (public domain), via three-globe example images
 `night-sky.png` — from [three-globe](https://github.com/vasturiano/three-globe) example images (MIT License)
+
+## 라이선스
+
+코드는 [MIT](LICENSE). 지구 텍스처의 출처와 라이선스는 위에 적었다.
