@@ -47,14 +47,11 @@ export function Header(p: Props) {
                 aria-pressed={p.layers.includes(k)}
                 onClick={() => p.onToggle(k)}
                 title={msg.layer[k]}
-                aria-label={msg.layer[k]}
+                aria-label={s.state === 'error' ? `${msg.layer[k]} — ${msg.failed}` : msg.layer[k]}
               >
                 <span aria-hidden="true">{ICON[k]}</span>
                 <span className="toggle-label"> {msg.layer[k]}</span>
-                {s.state === 'error' && <>
-                    <span className="warn" aria-hidden="true"> ⚠</span>
-                    <span className="sr-only">{msg.failed}</span>
-                  </>}
+                {s.state === 'error' && <span className="warn" aria-hidden="true"> ⚠</span>}
               </button>
               {s.state === 'error' && (
                 <button type="button" className="btn btn-small" onClick={() => p.onRetry(k)}>
