@@ -1,4 +1,4 @@
-import { DAY, HOUR, isNum, validCoord, type LaunchStatus, type Loaded, type PulseEvent } from '../model.ts';
+import { DAY, HOUR, httpUrl, isNum, validCoord, type LaunchStatus, type Loaded, type PulseEvent } from '../model.ts';
 import { cacheRead, cacheWrite, withCache } from '../lib/cache.ts';
 import { fetchJson, HttpError } from './http.ts';
 
@@ -44,7 +44,7 @@ export function parseLaunches(json: unknown, now: number): PulseEvent[] {
       lng,
       status,
       label: place ? `${String(r.name)} · ${String(place)}` : String(r.name),
-      url: String(r.url ?? ''),
+      url: httpUrl(r.url),
     });
   }
   return out;

@@ -31,3 +31,8 @@ test('형식이 다르면 빈 배열', () => {
   assert.deepEqual(parseUsgs({ features: 'nope' }), []);
   assert.deepEqual(parseUsgs({ features: [null, 1, {}] }), []);
 });
+
+test('http(s)가 아닌 url은 빈 문자열', () => {
+  const f = { id: 'x', properties: { mag: 1, time: 1, place: 'p', url: 'javascript:alert(1)' }, geometry: { coordinates: [0, 0] } };
+  assert.equal(parseUsgs({ features: [f] })[0].url, '');
+});

@@ -60,3 +60,8 @@ test('dedupeById: 같은 id는 처음 것만 남긴다(지난·예정 목록에 
   assert.deepEqual(dedupeById([a, b, c]), [a, b]);
   assert.deepEqual(dedupeById([]), []);
 });
+
+test('http(s)가 아닌 url은 빈 문자열', () => {
+  const r = { id: 'x', net: '2026-10-24T00:00:00Z', name: 'n', url: 'javascript:alert(1)', status: { id: 1 }, pad: { latitude: 1, longitude: 1 } };
+  assert.equal(parseLaunches({ results: [r] }, NOW)[0].url, '');
+});

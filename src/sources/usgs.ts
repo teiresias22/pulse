@@ -1,4 +1,4 @@
-import { isNum, MINUTE, validCoord, type Loaded, type PulseEvent } from '../model.ts';
+import { httpUrl, isNum, MINUTE, validCoord, type Loaded, type PulseEvent } from '../model.ts';
 import { withCache } from '../lib/cache.ts';
 import { fetchJson } from './http.ts';
 
@@ -29,7 +29,7 @@ export function parseUsgs(json: unknown): PulseEvent[] {
       lng,
       magnitude: p.mag,
       label: String(p.place ?? p.title ?? ''),
-      url: String(p.url ?? ''),
+      url: httpUrl(p.url),
     });
   }
   return out;

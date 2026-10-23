@@ -34,3 +34,8 @@ export function isNum(x: unknown): x is number {
 export function validCoord(lat: number, lng: number): boolean {
   return Math.abs(lat) <= 90 && Math.abs(lng) <= 180;
 }
+
+export function httpUrl(x: unknown): string {
+  const s = String(x ?? '');
+  return /^https?:\/\//.test(s) ? s : '';
+}
