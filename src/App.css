@@ -1,0 +1,46 @@
+:root {
+  color-scheme: dark;
+  --bg: #05070d;
+  --panel: rgba(12, 16, 28, 0.72);
+  --panel-border: rgba(255, 255, 255, 0.1);
+  --text: #e8ecf6;
+  --muted: #8f9ab3;
+  --accent: #7bdff2;
+  --warn: #ffd166;
+  --danger: #ef476f;
+  --radius: 12px;
+  --gutter: 16px;
+  font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root { height: 100%; margin: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+}
+
+.app { position: relative; height: 100%; }
+
+.globe { position: absolute; inset: 0; }
+
+.num { font-variant-numeric: tabular-nums; }
+
+.marker {
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font-size: 16px;
+  line-height: 1;
+  padding: 4px;
+  cursor: pointer;
+  transform: translate(-50%, -50%);
+  text-shadow: 0 0 6px rgba(0, 0, 0, 0.9);
+}
+.marker-failure { color: var(--danger); }
+.marker-upcoming { color: var(--warn); }
+.marker-iss { font-size: 18px; }
+.marker:focus-visible { outline: 2px solid var(--accent); border-radius: 50%; }

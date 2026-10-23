@@ -24,6 +24,8 @@ export type Loaded<T> = { value: T; fetchedAt: number; stale: boolean };
 
 export type Selection = { kind: 'event'; event: PulseEvent } | { kind: 'iss' };
 
+export type LayerStatus = { state: 'loading' | 'ok' | 'error'; fetchedAt?: number; stale?: boolean };
+
 export function isNum(x: unknown): x is number {
   return typeof x === 'number' && Number.isFinite(x);
 }
