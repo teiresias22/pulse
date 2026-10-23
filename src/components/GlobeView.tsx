@@ -49,8 +49,8 @@ export function GlobeView(props: GlobeProps) {
     const host = el.current;
     if (!host) return;
     const g = new Globe(host)
-      .globeImageUrl('/textures/earth-night.jpg')
-      .backgroundImageUrl('/textures/night-sky.png')
+      .globeImageUrl(`${import.meta.env.BASE_URL}textures/earth-night.webp`)
+      .backgroundImageUrl(`${import.meta.env.BASE_URL}textures/night-sky.webp`)
       .pointLat('lat')
       .pointLng('lng')
       .pointsTransitionDuration(0)
