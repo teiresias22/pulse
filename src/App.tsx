@@ -170,8 +170,15 @@ export default function App() {
   const iss = layers.includes('iss') && positionAt ? positionAt(t) : null;
   const orbit = iss && positionAt ? orbitPath(positionAt, t) : [];
   const issStale = tle ? isTleStale(tle, t) : false;
-  const toggleLayer = (k: LayerKey) =>
+  const toggleLayer = (k: LayerKey) => {
+    // 끄는 레이어의 카드가 열려 있으면 닫고 따라가기도 멈춘다
+    const open = selected && (selected.kind === 'iss' ? 'iss' : selected.event.kind);
+    if (open === k && layers.includes(k)) {
+      setSelected(null);
+      setFollow(false);
+    }
     setLayers((ls) => LAYERS.filter((l) => (l === k ? !ls.includes(l) : ls.includes(l))));
+  };
   const shareUrl = () =>
     `${window.location.origin}${window.location.pathname}${encodeHash({ t, layers })}`;
 

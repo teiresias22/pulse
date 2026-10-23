@@ -35,6 +35,15 @@ export function GlobeView(props: GlobeProps) {
   });
   // ISS 마커 객체를 재사용해야 globe.gl이 DOM 요소를 매번 새로 만들지 않는다
   const issMarker = useRef<Marker>({ lat: 0, lng: 0, alt: 0, iss: true });
+  // 자동 회전 재개 타이머: 마지막 조작·따라가기 종료 10초 뒤에만, 따라가기 중에는 켜지 않는다
+  const resumeTimer = useRef<number | undefined>(undefined);
+  const scheduleResume = () => {
+    window.clearTimeout(resumeTimer.current);
+    resumeTimer.current = window.setTimeout(() => {
+      const c = globe.current?.controls();
+      if (c) c.autoRotate = !latest.current.reducedMotion && !latest.current.follow;
+    }, 10_000);
+  };
 
   useEffect(() => {
     const host = el.current;
@@ -106,18 +115,12 @@ export function GlobeView(props: GlobeProps) {
     const controls = g.controls();
     controls.autoRotate = !latest.current.reducedMotion;
     controls.autoRotateSpeed = 0.35;
-    let resume: number | undefined;
     const onStart = () => {
+      window.clearTimeout(resumeTimer.current);
       controls.autoRotate = false;
-      window.clearTimeout(resume);
       latest.current.onUserInteract();
     };
-    const onEnd = () => {
-      window.clearTimeout(resume);
-      resume = window.setTimeout(() => {
-        controls.autoRotate = !latest.current.reducedMotion;
-      }, 10_000);
-    };
+    const onEnd = scheduleResume;
     controls.addEventListener('start', onStart);
     controls.addEventListener('end', onEnd);
 
@@ -127,7 +130,7 @@ export function GlobeView(props: GlobeProps) {
 
     return () => {
       ro.disconnect();
-      window.clearTimeout(resume);
+      window.clearTimeout(resumeTimer.current);
       controls.removeEventListener('start', onStart);
       controls.removeEventListener('end', onEnd);
       g._destructor();
@@ -175,8 +178,13 @@ export function GlobeView(props: GlobeProps) {
   }, [follow, iss]);
 
   useEffect(() => {
-    const g = globe.current;
-    if (g && (follow || reducedMotion)) g.controls().autoRotate = false; // 다시 켜는 건 onEnd의 10초 타이머
+    const c = globe.current?.controls();
+    if (!c) return;
+    if (follow || reducedMotion) {
+      window.clearTimeout(resumeTimer.current);
+      c.autoRotate = false;
+    } else scheduleResume();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- scheduleResume은 ref만 읽는다
   }, [reducedMotion, follow]);
 
   return <div ref={el} className="globe" />;
