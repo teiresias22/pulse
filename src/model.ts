@@ -18,6 +18,7 @@ export const LAYERS: LayerKey[] = ['quake', 'launch', 'iss'];
 export const MINUTE = 60_000;
 export const HOUR = 60 * MINUTE;
 export const DAY = 24 * HOUR;
+export const SPEEDS = [HOUR, 6 * HOUR, DAY];
 
 // stale = 새로 받지 못해 예전 캐시를 돌려준 경우
 export type Loaded<T> = { value: T; fetchedAt: number; stale: boolean };

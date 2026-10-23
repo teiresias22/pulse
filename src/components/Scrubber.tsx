@@ -1,7 +1,6 @@
-import { DAY, HOUR } from '../model.ts';
+import { SPEEDS } from '../model.ts';
 import { fmtTime, msg } from '../i18n.ts';
 
-export const SPEEDS = [HOUR, 6 * HOUR, DAY];
 const SPEED_LABEL = ['1h/s', '6h/s', '1d/s'];
 
 export type ScrubberProps = {

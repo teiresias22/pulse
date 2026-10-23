@@ -3,10 +3,10 @@ import { GlobeView } from './components/GlobeView.tsx';
 import { loadQuakes } from './sources/usgs.ts';
 import { loadLaunches } from './sources/launches.ts';
 import { isTleStale, loadTle, makePropagator, orbitPath, type Tle } from './sources/iss.ts';
-import { Scrubber, SPEEDS } from './components/Scrubber.tsx';
+import { Scrubber } from './components/Scrubber.tsx';
 import { timeRange, visibleLaunches, visibleQuakes } from './lib/timeline.ts';
 import { decodeHash, encodeHash } from './lib/hash.ts';
-import { HOUR, MINUTE, type LayerKey, type LayerStatus, type Loaded, type PulseEvent, type Selection } from './model.ts';
+import { HOUR, MINUTE, SPEEDS, type LayerKey, type LayerStatus, type Loaded, type PulseEvent, type Selection } from './model.ts';
 import './App.css';
 
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -88,20 +88,21 @@ export default function App() {
   useEffect(() => {
     tRef.current = t;
   });
+  const simRef = useRef(t); // 재생 루프·스크럽이 공유하는 시뮬레이션 시각
   useEffect(() => {
     if (!playing) return;
     let raf = 0;
     let last = performance.now();
     let lastSet = last;
-    let simT = tRef.current;
     const step = (now: number) => {
-      simT = Math.min(range.max, simT + ((now - last) / 1000) * speed);
+      const dt = Math.min(now - last, 250); // 숨겨졌던 탭이 돌아와도 끝으로 튀지 않게
+      simRef.current = Math.min(range.max, simRef.current + (dt / 1000) * speed);
       last = now;
-      if (now - lastSet >= 100 || simT >= range.max) {
+      if (now - lastSet >= 100 || simRef.current >= range.max) {
         lastSet = now;
-        setT(simT);
+        setT(simRef.current);
       }
-      if (simT >= range.max) {
+      if (simRef.current >= range.max) {
         setPlaying(false);
         return;
       }
@@ -123,7 +124,9 @@ export default function App() {
   const scrubTo = useCallback(
     (next: number) => {
       setLive(false);
-      setT(Math.min(range.max, Math.max(range.min, next)));
+      const v = Math.min(range.max, Math.max(range.min, next));
+      simRef.current = v;
+      setT(v);
     },
     [range.min, range.max],
   );
@@ -134,19 +137,25 @@ export default function App() {
   }, []);
   const togglePlay = useCallback(() => {
     setLive(false);
-    // 끝에서 재생을 누르면 처음부터(재생 중엔 끝에 닿는 순간 멈추므로 이 조건은 시작할 때만 맞는다)
-    if (tRef.current >= range.max) setT(range.min);
-    setPlaying((p) => !p);
-  }, [range.min, range.max]);
+    if (!playing) {
+      // 끝에서 재생을 누르면 처음부터
+      simRef.current = tRef.current >= range.max ? range.min : tRef.current;
+      setT(simRef.current);
+    }
+    setPlaying(!playing);
+  }, [playing, range.min, range.max]);
 
   // 키보드: ←→ ±1시간, Space 재생. 입력 요소에 포커스가 있으면 그 요소에 맡긴다
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
       const tag = (e.target as HTMLElement | null)?.tagName;
       if (tag === 'INPUT' || tag === 'BUTTON' || tag === 'A') return;
       if (e.key === 'ArrowLeft') scrubTo(tRef.current - HOUR);
       else if (e.key === 'ArrowRight') scrubTo(tRef.current + HOUR);
-      else if (e.key === ' ') togglePlay();
+      else if (e.key === ' ') {
+        if (!e.repeat) togglePlay();
+      }
       else return;
       e.preventDefault();
     };
@@ -176,7 +185,7 @@ export default function App() {
         t={t}
         min={range.min}
         max={range.max}
-        now={live ? t : Date.now()}
+        now={live ? t : anchor}
         live={live}
         playing={playing}
         speed={speed}
