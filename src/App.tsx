@@ -3,10 +3,13 @@ import { GlobeView } from './components/GlobeView.tsx';
 import { loadQuakes } from './sources/usgs.ts';
 import { loadLaunches } from './sources/launches.ts';
 import { isTleStale, loadTle, makePropagator, orbitPath, type Tle } from './sources/iss.ts';
+import { Header } from './components/Header.tsx';
+import { Legend } from './components/Legend.tsx';
+import { EventCard } from './components/EventCard.tsx';
 import { Scrubber } from './components/Scrubber.tsx';
 import { timeRange, visibleLaunches, visibleQuakes } from './lib/timeline.ts';
 import { decodeHash, encodeHash } from './lib/hash.ts';
-import { HOUR, MINUTE, SPEEDS, type LayerKey, type LayerStatus, type Loaded, type PulseEvent, type Selection } from './model.ts';
+import { HOUR, LAYERS, MINUTE, SPEEDS, type LayerKey, type LayerStatus, type Loaded, type PulseEvent, type Selection } from './model.ts';
 import './App.css';
 
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -19,19 +22,19 @@ export default function App() {
   const [t, setT] = useState(() =>
     initial.t === null ? Date.now() : Math.min(range.max, Math.max(range.min, initial.t)),
   );
-  const [layers] = useState<LayerKey[]>(initial.layers); // Task 8에서 [layers, setLayers]로 바꾼다
+  const [layers, setLayers] = useState<LayerKey[]>(initial.layers);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(SPEEDS[0]);
   const [quakes, setQuakes] = useState<PulseEvent[]>([]);
   const [launches, setLaunches] = useState<PulseEvent[]>([]);
   const [tle, setTle] = useState<Tle | null>(null);
-  const [, setStatus] = useState<Record<LayerKey, LayerStatus>>({
+  const [status, setStatus] = useState<Record<LayerKey, LayerStatus>>({
     quake: { state: 'loading' },
     launch: { state: 'loading' },
     iss: { state: 'loading' },
   });
   const [follow, setFollow] = useState(false);
-  const [, setSelected] = useState<Selection | null>(null);
+  const [selected, setSelected] = useState<Selection | null>(null);
 
   const run = useCallback(async <T,>(key: LayerKey, loader: () => Promise<Loaded<T>>, apply: (v: T) => void) => {
     setStatus((s) => ({ ...s, [key]: { state: 'loading' } }));
@@ -166,6 +169,11 @@ export default function App() {
   const positionAt = useMemo(() => (tle ? makePropagator(tle) : null), [tle]);
   const iss = layers.includes('iss') && positionAt ? positionAt(t) : null;
   const orbit = iss && positionAt ? orbitPath(positionAt, t) : [];
+  const issStale = tle ? isTleStale(tle, t) : false;
+  const toggleLayer = (k: LayerKey) =>
+    setLayers((ls) => LAYERS.filter((l) => (l === k ? !ls.includes(l) : ls.includes(l))));
+  const shareUrl = () =>
+    `${window.location.origin}${window.location.pathname}${encodeHash({ t, layers })}`;
 
   return (
     <div className="app">
@@ -175,12 +183,36 @@ export default function App() {
         launches={layers.includes('launch') ? visibleLaunches(launches, t) : []}
         iss={iss}
         orbit={orbit}
-        issStale={tle ? isTleStale(tle, t) : false}
+        issStale={issStale}
         reducedMotion={reducedMotion}
         follow={follow}
         onSelect={setSelected}
         onUserInteract={() => setFollow(false)}
       />
+      <Header
+        live={live}
+        layers={layers}
+        status={status}
+        now={live ? t : anchor}
+        onToggle={toggleLayer}
+        onRetry={(k) => void load(k)}
+        shareUrl={shareUrl}
+      />
+      <Legend />
+      {selected && (
+        <EventCard
+          selection={selected}
+          t={t}
+          iss={iss}
+          issStale={issStale}
+          follow={follow}
+          onFollow={setFollow}
+          onClose={() => {
+            setSelected(null);
+            setFollow(false);
+          }}
+        />
+      )}
       <Scrubber
         t={t}
         min={range.min}

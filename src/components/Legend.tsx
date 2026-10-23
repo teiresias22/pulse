@@ -1,0 +1,16 @@
+import { msg } from '../i18n.ts';
+
+export function Legend() {
+  return (
+    <details className="legend panel" open={window.innerWidth > 640}>
+      <summary>{msg.legendTitle}</summary>
+      <ul>
+        <li><span className="dot dot-s" /> {msg.magnitude} &lt; 2.5</li>
+        <li><span className="dot dot-m" /> {msg.magnitude} 2.5–4.5</li>
+        <li><span className="dot dot-l" /> {msg.magnitude} 4.5+</li>
+        <li><span className="sym">▲</span> {msg.status.success} · <span className="sym sym-failure">✕</span> {msg.status.failure} · <span className="sym sym-upcoming">◇</span> {msg.status.upcoming}</li>
+        <li><span className="sym">◉</span> ISS</li>
+      </ul>
+    </details>
+  );
+}

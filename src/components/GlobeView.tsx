@@ -176,7 +176,7 @@ export function GlobeView(props: GlobeProps) {
 
   useEffect(() => {
     const g = globe.current;
-    if (g) g.controls().autoRotate = !reducedMotion && !follow;
+    if (g && (follow || reducedMotion)) g.controls().autoRotate = false; // 다시 켜는 건 onEnd의 10초 타이머
   }, [reducedMotion, follow]);
 
   return <div ref={el} className="globe" />;
