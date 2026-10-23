@@ -30,4 +30,5 @@ npm run check   # node --test 'src/**/*.check.mjs' — 실제 응답을 자른 f
 npm run lint && npm run build
 ```
 
-지구 텍스처는 [three-globe](https://github.com/vasturiano/three-globe) 예제 이미지(NASA)다.
+`earth-night.jpg` — NASA Earth Observatory "Earth at Night" (public domain), via three-globe example images
+`night-sky.png` — from [three-globe](https://github.com/vasturiano/three-globe) example images (MIT License)

@@ -1,5 +1,5 @@
 import { SPEEDS } from '../model.ts';
-import { fmtTime, msg } from '../i18n.ts';
+import { fmtTime, lang, msg } from '../i18n.ts';
 
 const SPEED_LABEL = ['1h/s', '6h/s', '1d/s'];
 
@@ -17,13 +17,13 @@ export type ScrubberProps = {
   onLive: () => void;
 };
 
-const day = new Intl.DateTimeFormat(undefined, { month: 'numeric', day: 'numeric' });
+const day = new Intl.DateTimeFormat(lang, { month: 'numeric', day: 'numeric' });
 
 export function Scrubber(p: ScrubberProps) {
   const nowPct = ((p.now - p.min) / (p.max - p.min)) * 100;
   const next = SPEEDS[(SPEEDS.indexOf(p.speed) + 1) % SPEEDS.length];
   return (
-    <section className="scrubber panel" aria-label="timeline">
+    <section className="scrubber panel" aria-label={msg.timeline}>
       <div className="scrubber-row">
         <button type="button" className="btn" onClick={p.onTogglePlay} aria-label={p.playing ? msg.pause : msg.play}>
           {p.playing ? '❚❚' : '▶'}

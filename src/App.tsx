@@ -118,14 +118,15 @@ export default function App() {
     return () => cancelAnimationFrame(raf);
   }, [playing, speed, range.max]);
 
+  const hashT = live ? null : t;
   // 해시: 재생 중엔 쓰지 않고, 멈춘 뒤 0.5초 지나 한 번(Safari는 replaceState 횟수를 제한한다)
   useEffect(() => {
     if (playing) return;
     const id = window.setTimeout(() => {
-      history.replaceState(null, '', encodeHash({ t: live ? null : t, layers }));
+      history.replaceState(null, '', encodeHash({ t: hashT, layers }));
     }, 500);
     return () => window.clearTimeout(id);
-  }, [playing, live, t, layers]);
+  }, [playing, hashT, layers]);
 
   const scrubTo = useCallback(
     (next: number) => {
@@ -156,7 +157,7 @@ export default function App() {
     const onKey = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const tag = (e.target as HTMLElement | null)?.tagName;
-      if (tag === 'INPUT' || tag === 'BUTTON' || tag === 'A') return;
+      if (tag === 'INPUT' || tag === 'BUTTON' || tag === 'A' || tag === 'SUMMARY') return;
       if (e.key === 'ArrowLeft') scrubTo(tRef.current - HOUR);
       else if (e.key === 'ArrowRight') scrubTo(tRef.current + HOUR);
       else if (e.key === ' ') {

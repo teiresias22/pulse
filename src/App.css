@@ -168,3 +168,15 @@ body {
 .fallback { max-width: 720px; height: 100%; overflow-y: auto; margin: 0 auto; padding: var(--gutter); line-height: 1.6; }
 .fallback h2 { font-size: 15px; color: var(--muted); margin-top: 24px; }
 .fallback ul { padding-left: 18px; font-size: 14px; }
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+}

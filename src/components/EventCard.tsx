@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import type { IssPos } from '../sources/iss.ts';
 import type { Selection } from '../model.ts';
 import { fmtCountdown, fmtTime, msg } from '../i18n.ts';
@@ -13,8 +14,13 @@ type Props = {
 };
 
 export function EventCard(p: Props) {
+  const ref = useRef<HTMLElement>(null);
+  const id = p.selection.kind === 'iss' ? 'iss' : p.selection.event.id;
+  useEffect(() => {
+    ref.current?.focus();
+  }, [id]);
   return (
-    <aside className="card panel" aria-live="polite">
+    <aside ref={ref} tabIndex={-1} className="card panel">
       <button type="button" className="card-close btn btn-small" onClick={p.onClose} aria-label={msg.close}>
         ✕
       </button>
