@@ -11,8 +11,8 @@ export function encodeHash(s: ViewState): string {
 
 export function decodeHash(hash: string): ViewState {
   const p = new URLSearchParams(hash.replace(/^#/, ''));
-  const tRaw = Number(p.get('t'));
-  const t = p.has('t') && Number.isFinite(tRaw) ? tRaw : null;
+  const rawT = p.get('t');
+  const t = rawT && Number.isFinite(Number(rawT)) ? Number(rawT) : null;
   const raw = p.get('layers');
   const picked = raw === null ? LAYERS : raw.split(',');
   return { t, layers: LAYERS.filter((l) => picked.includes(l)) };

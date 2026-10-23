@@ -19,6 +19,10 @@ test('잘못된 t는 라이브, 모르는 레이어는 버리고 순서는 정�
   assert.deepEqual(decodeHash('#t=abc&layers=iss,bogus,quake'), { t: null, layers: ['quake', 'iss'] });
 });
 
+test('빈 t(#t=)도 라이브', () => {
+  assert.deepEqual(decodeHash('#t=&layers=quake'), { t: null, layers: ['quake'] });
+});
+
 test('layers= 가 비어 있으면 레이어 없음(전부 끈 상태도 공유 가능)', () => {
   assert.deepEqual(decodeHash('#layers='), { t: null, layers: [] });
 });
