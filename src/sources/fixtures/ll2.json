@@ -1,0 +1,50 @@
+{
+  "count": 5,
+  "results": [
+    {
+      "id": "7766f3bb-674c-4c71-b986-963bd633fcfe",
+      "url": "https://ll.thespacedevs.com/2.3.0/launches/7766f3bb-674c-4c71-b986-963bd633fcfe/",
+      "name": "Electron | We're Not Hawking Around (3x HawkEye 360)",
+      "net": "2026-10-23T07:11:00Z",
+      "status": { "id": 6, "abbrev": "In Flight" },
+      "pad": {
+        "name": "Rocket Lab Launch Complex 1A",
+        "latitude": -39.262833,
+        "longitude": 177.864469,
+        "location": { "name": "Rocket Lab Launch Complex 1, Mahia Peninsula, New Zealand" }
+      }
+    },
+    {
+      "id": "fail-1",
+      "url": "https://ll.thespacedevs.com/2.3.0/launches/fail-1/",
+      "name": "Rocket X | Demo",
+      "net": "2026-10-20T00:00:00Z",
+      "status": { "id": 4, "abbrev": "Failure" },
+      "pad": { "latitude": "28.5", "longitude": "-80.6", "location": { "name": "Cape Canaveral, FL, USA" } }
+    },
+    {
+      "id": "future-1",
+      "url": "https://ll.thespacedevs.com/2.3.0/launches/future-1/",
+      "name": "Falcon 9 | Starlink",
+      "net": "2026-10-26T12:00:00Z",
+      "status": { "id": 1, "abbrev": "Go" },
+      "pad": { "latitude": 28.56, "longitude": -80.57, "location": { "name": "Kennedy Space Center, FL, USA" } }
+    },
+    {
+      "id": "past-tbd",
+      "url": "u",
+      "name": "Mystery | ?",
+      "net": "2026-10-18T00:00:00Z",
+      "status": { "id": 2, "abbrev": "TBD" },
+      "pad": { "latitude": 0, "longitude": 0, "location": { "name": "Nowhere" } }
+    },
+    {
+      "id": "no-pad",
+      "url": "u",
+      "name": "No pad",
+      "net": "2026-10-21T00:00:00Z",
+      "status": { "id": 3, "abbrev": "Success" },
+      "pad": { "latitude": null, "longitude": null }
+    }
+  ]
+}
