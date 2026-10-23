@@ -1,8 +1,8 @@
-# Planet Pulse
+# Pulse
 
 지난 7일간 지구에서 일어난 지진·로켓 발사·ISS 궤도를 3D 지구본 위에서 되감아 보는 웹 페이지.
 
-- 사이트: https://planet-pulse.joon.is-a.dev
+- 사이트: https://pulse.joon.is-a.dev
 - 서버 없음. 브라우저가 키 없는 공개 API 세 개를 직접 부른다.
 
 ## 데이터

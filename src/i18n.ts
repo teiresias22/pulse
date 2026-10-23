@@ -1,5 +1,5 @@
 const ko = {
-  title: 'Planet Pulse',
+  title: 'Pulse',
   tagline: '지난 7일, 지구의 맥박',
   live: '라이브',
   layer: { quake: '지진', launch: '발사', iss: 'ISS' },
@@ -33,7 +33,7 @@ const ko = {
 };
 
 const en: typeof ko = {
-  title: 'Planet Pulse',
+  title: 'Pulse',
   tagline: 'The planet’s pulse, last 7 days',
   live: 'Live',
   layer: { quake: 'Quakes', launch: 'Launches', iss: 'ISS' },
