@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { mapStatus, parseLaunches, retryAfterUntil } from './launches.ts';
+import { dedupeById, mapStatus, parseLaunches, retryAfterUntil } from './launches.ts';
 
 const fixture = JSON.parse(readFileSync(new URL('./fixtures/ll2.json', import.meta.url), 'utf8'));
 const NOW = Date.parse('2026-10-23T09:00:00Z');
@@ -51,4 +51,12 @@ test('retryAfterUntil: 초·HTTP 날짜·없음(기본 1시간)', () => {
   assert.equal(retryAfterUntil('Fri, 23 Oct 2026 10:00:00 GMT', NOW), Date.parse('2026-10-23T10:00:00Z'));
   assert.equal(retryAfterUntil(null, NOW), NOW + 3_600_000);
   assert.equal(retryAfterUntil('garbage', NOW), NOW + 3_600_000);
+});
+
+test('dedupeById: 같은 id는 처음 것만 남긴다(지난·예정 목록에 비행 중 발사가 겹친다)', () => {
+  const a = { id: 'x', label: 'first' };
+  const b = { id: 'y', label: 'other' };
+  const c = { id: 'x', label: 'second' };
+  assert.deepEqual(dedupeById([a, b, c]), [a, b]);
+  assert.deepEqual(dedupeById([]), []);
 });

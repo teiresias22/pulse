@@ -50,6 +50,11 @@ export function parseLaunches(json: unknown, now: number): PulseEvent[] {
   return out;
 }
 
+export function dedupeById(events: PulseEvent[]): PulseEvent[] {
+  const seen = new Set<string>();
+  return events.filter((e) => !seen.has(e.id) && Boolean(seen.add(e.id)));
+}
+
 export function retryAfterUntil(header: string | null, now: number): number {
   if (header) {
     const seconds = Number(header);
@@ -71,7 +76,7 @@ export function loadLaunches(now = Date.now()): Promise<Loaded<PulseEvent[]>> {
         fetchJson(`${BASE}/previous/?mode=normal&limit=100&net__gte=${from}`),
         fetchJson(`${BASE}/upcoming/?mode=normal&limit=100&net__lte=${to}`),
       ]);
-      return [...parseLaunches(prev, now), ...parseLaunches(next, now)];
+      return dedupeById([...parseLaunches(prev, now), ...parseLaunches(next, now)]);
     } catch (err) {
       if (err instanceof HttpError && err.status === 429) {
         cacheWrite(BLOCK_KEY, retryAfterUntil(err.retryAfter, now), now);
