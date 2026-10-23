@@ -1,0 +1,47 @@
+{
+  "type": "FeatureCollection",
+  "metadata": { "generated": 1792738748000, "count": 5 },
+  "features": [
+    {
+      "type": "Feature",
+      "id": "ci41350919",
+      "properties": {
+        "mag": 0.73,
+        "place": "13 km WSW of Searles Valley, CA",
+        "time": 1792739784220,
+        "url": "https://earthquake.usgs.gov/earthquakes/eventpage/ci41350919",
+        "title": "M 0.7 - 13 km WSW of Searles Valley, CA"
+      },
+      "geometry": { "type": "Point", "coordinates": [-117.536666666667, 35.7268333333333, 2.44] }
+    },
+    {
+      "type": "Feature",
+      "id": "us7000abcd",
+      "properties": {
+        "mag": 5.6,
+        "place": "south of the Kermadec Islands",
+        "time": 1792700000000,
+        "url": "https://earthquake.usgs.gov/earthquakes/eventpage/us7000abcd",
+        "title": "M 5.6 - south of the Kermadec Islands"
+      },
+      "geometry": { "type": "Point", "coordinates": [-178.2, -32.1, 35] }
+    },
+    {
+      "type": "Feature",
+      "id": "nullmag1",
+      "properties": { "mag": null, "place": "x", "time": 1792700000000, "url": "u" },
+      "geometry": { "type": "Point", "coordinates": [10, 10, 1] }
+    },
+    {
+      "type": "Feature",
+      "id": "badcoord",
+      "properties": { "mag": 2, "place": "x", "time": 1792700000000, "url": "u" },
+      "geometry": { "type": "Point", "coordinates": [200, 10, 1] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "mag": 2, "place": "no id", "time": 1792700000000, "url": "u" },
+      "geometry": { "type": "Point", "coordinates": [10, 10, 1] }
+    }
+  ]
+}
