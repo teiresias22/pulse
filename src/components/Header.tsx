@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { LAYERS, type LayerKey, type LayerStatus } from '../model.ts';
 import { fmtAgo, msg } from '../i18n.ts';
 import { track } from '../lib/analytics.ts';
@@ -17,6 +17,15 @@ type Props = {
 
 export function Header(p: Props) {
   const [copied, setCopied] = useState(false);
+  const ref = useRef<HTMLElement>(null);
+  // 헤더가 접혀 높이가 바뀌면 #about이 그 아래로 따라간다
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => document.documentElement.style.setProperty('--header-h', `${el.offsetHeight}px`));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   const share = async () => {
     try {
       await navigator.clipboard.writeText(p.shareUrl());
@@ -28,7 +37,7 @@ export function Header(p: Props) {
     }
   };
   return (
-    <header className="header panel">
+    <header ref={ref} className="header panel">
       <div className="brand">
         <h1>{msg.title}</h1>
         {p.live && (

@@ -26,6 +26,8 @@ body {
 .app { position: relative; height: 100%; }
 
 .globe { position: absolute; inset: 0; }
+/* globe.gl은 showNavInfo를 노출하지 않고 내부에서 끈다 — 기본값이 바뀌어도 숨긴다 */
+.scene-nav-info { display: none !important; }
 
 .num { font-variant-numeric: tabular-nums; }
 
@@ -37,6 +39,11 @@ body {
   line-height: 1;
   padding: 4px;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  min-height: 28px;
   transform: translate(-50%, -50%);
   text-shadow: 0 0 6px rgba(0, 0, 0, 0.9);
 }
@@ -103,6 +110,7 @@ body {
   flex-wrap: wrap;
   gap: 8px;
   padding: 8px 12px;
+  z-index: 2;
 }
 .brand { display: flex; align-items: center; gap: 10px; }
 .brand h1 { margin: 0; font-size: 15px; letter-spacing: 0.12em; text-transform: uppercase; }
@@ -161,6 +169,41 @@ body {
     width: auto;
   }
 }
+
+/* index.html의 정적 소개(#root 밖) — JS 없이도 읽힌다 */
+.about {
+  z-index: 1;
+  top: calc(var(--gutter) + var(--header-h, 56px) + 8px + env(safe-area-inset-top));
+  left: calc(var(--gutter) + env(safe-area-inset-left));
+  max-width: 340px;
+  padding: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.about summary { cursor: pointer; padding: 6px 12px; color: var(--text); font-size: 12px; }
+.about summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--radius); }
+.about[open] { max-height: calc(100vh - var(--header-h, 56px) - 208px - 2 * var(--gutter)); overflow: auto; padding-bottom: 12px; }
+.about > :not(summary) { margin-left: 12px; margin-right: 12px; }
+.about h2 { margin-top: 4px; margin-bottom: 6px; font-size: 14px; color: var(--text); }
+.about h3 { margin-top: 12px; margin-bottom: 4px; font-size: 12px; color: var(--text); }
+.about p { margin-top: 0; margin-bottom: 8px; }
+.about ul { margin-top: 0; margin-bottom: 8px; padding-left: 18px; }
+.about a { color: var(--accent); }
+
+@media (max-width: 640px) {
+  .about {
+    right: calc(var(--gutter) + env(safe-area-inset-right));
+    max-width: none;
+  }
+  .about:not([open]) { right: auto; }
+  .about[open] { max-height: 45vh; }
+}
+
+/* WebGL 없음: 소개를 띄우지 않고 대체 목록 위에 흘린다 */
+body:has(.fallback) { display: flex; flex-direction: column; }
+body:has(.fallback) #root { flex: 1; min-height: 0; }
+body:has(.fallback) .about { position: static; flex: none; margin: var(--gutter) auto 0; width: calc(100% - 2 * var(--gutter)); max-width: 720px; max-height: 40vh; }
 
 @media (prefers-reduced-motion: reduce) {
   .live-dot { animation: none; }

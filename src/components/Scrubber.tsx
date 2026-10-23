@@ -21,6 +21,7 @@ const day = new Intl.DateTimeFormat(lang, { month: 'numeric', day: 'numeric' });
 
 export function Scrubber(p: ScrubberProps) {
   const nowPct = ((p.now - p.min) / (p.max - p.min)) * 100;
+  const label = SPEED_LABEL[SPEEDS.indexOf(p.speed)];
   const next = SPEEDS[(SPEEDS.indexOf(p.speed) + 1) % SPEEDS.length];
   return (
     <section className="scrubber panel" aria-label={msg.timeline}>
@@ -28,8 +29,8 @@ export function Scrubber(p: ScrubberProps) {
         <button type="button" className="btn" onClick={p.onTogglePlay} aria-label={p.playing ? msg.pause : msg.play}>
           {p.playing ? '❚❚' : '▶'}
         </button>
-        <button type="button" className="btn num" onClick={() => p.onSpeed(next)} aria-label={msg.speed}>
-          {SPEED_LABEL[SPEEDS.indexOf(p.speed)]}
+        <button type="button" className="btn num" onClick={() => p.onSpeed(next)} aria-label={`${msg.speed} ${label}`}>
+          {label}
         </button>
         <span className="scrubber-time num">{fmtTime(p.t)}</span>
         <button type="button" className={`btn${p.live ? ' btn-on' : ''}`} onClick={p.onLive} aria-pressed={p.live}>
@@ -44,6 +45,7 @@ export function Scrubber(p: ScrubberProps) {
           step={60_000}
           value={p.t}
           onChange={(e) => p.onScrub(Number(e.currentTarget.value))}
+          aria-label={msg.scrubTime}
           aria-valuetext={fmtTime(p.t)}
         />
         <span className="scrubber-now" style={{ left: `${nowPct}%` }} aria-hidden="true" />
