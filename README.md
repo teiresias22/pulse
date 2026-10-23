@@ -1,32 +1,33 @@
-# React + TypeScript + Vite
+# Planet Pulse
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+지난 7일간 지구에서 일어난 지진·로켓 발사·ISS 궤도를 3D 지구본 위에서 되감아 보는 웹 페이지.
 
-Currently, two official plugins are available:
+- 사이트: https://planet-pulse.joon.is-a.dev
+- 서버 없음. 브라우저가 키 없는 공개 API 세 개를 직접 부른다.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 데이터
 
-## React Compiler
+| 레이어 | 출처 | 캐시 |
+|---|---|---|
+| 지진 | [USGS Earthquake Hazards Program](https://earthquake.usgs.gov/earthquakes/feed/v1.0/geojson.php) — 지난 7일 전체 | 60초 |
+| 발사 | [Launch Library 2](https://thespacedevs.com/llapi) — 지난 7일 + 앞으로 7일 | 1시간(익명 한도 IP당 시간당 15회) |
+| ISS | [Where the ISS at?](https://wheretheiss.at/w/developer) TLE → [satellite.js](https://github.com/shashwatak/satellite-js)로 브라우저에서 위치 계산 | 1일 |
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+ISS 위치는 주기적으로 묻지 않는다. 하루 한 번 받은 궤도 요소(TLE)로 아무 시각의 위치나 계산하므로 스크러버로 되감을 수 있다.
 
-## Expanding the Oxlint configuration
+## 구조
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+- `src/sources/` 출처 하나에 파일 하나. 응답을 `PulseEvent`로 바꾸는 순수 함수 + 캐시 붙은 로더
+- `src/lib/` 캐시, 시각 `t`에 보일 이벤트(`timeline`), URL 해시
+- `src/components/` globe.gl 래퍼, 스크러버, 헤더, 카드
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+## 개발
+
+```bash
+npm install
+npm run dev
+npm run check   # node --test 'src/**/*.check.mjs' — 실제 응답을 자른 fixture로 변환 결과 고정
+npm run lint && npm run build
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+지구 텍스처는 [three-globe](https://github.com/vasturiano/three-globe) 예제 이미지(NASA)다.
