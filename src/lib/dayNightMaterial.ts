@@ -26,6 +26,7 @@ const fragmentShader = /* glsl */ `
   }
 `;
 
+// 색 공간 규약: 셰이더에 colorspace_fragment가 없으므로 텍스처는 NoColorSpace로 둘 것(SRGBColorSpace를 주면 색이 바래거나 어두워진다)
 export function createDayNightMaterial(day: Texture, night: Texture): ShaderMaterial {
   return new ShaderMaterial({
     uniforms: {

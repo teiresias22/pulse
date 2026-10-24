@@ -62,6 +62,8 @@ export function GlobeView(props: GlobeProps) {
     const host = el.current;
     if (!host) return;
     const g = new Globe(host)
+      // 텍스처를 받는 동안 밤 텍스처를 임시로 보인다(globeMaterial이 나중에 재질을 바꾼다)
+      .globeImageUrl(`${import.meta.env.BASE_URL}textures/earth-night.webp`)
       .backgroundImageUrl(`${import.meta.env.BASE_URL}textures/night-sky.webp`)
       .pointLat('lat')
       .pointLng('lng')
@@ -78,6 +80,7 @@ export function GlobeView(props: GlobeProps) {
       .onPointClick((d) => latest.current.onSelect({ kind: 'event', event: d as PulseEvent }))
       .ringLat('lat')
       .ringLng('lng')
+      .ringAltitude(0.005)
       .ringMaxRadius((d) => 1 + ((d as PulseEvent).magnitude ?? 0) * 0.8)
       .ringPropagationSpeed(2)
       .ringRepeatPeriod(1400)
@@ -125,15 +128,21 @@ export function GlobeView(props: GlobeProps) {
       loader.loadAsync(`${base}textures/earth-night.webp`),
     ])
       .then(([day, night]) => {
-        if (globe.current !== g) return;
+        if (globe.current !== g) {
+          day.dispose();
+          night.dispose();
+          return;
+        }
+        const aniso = g.renderer().capabilities.getMaxAnisotropy();
+        day.anisotropy = aniso;
+        night.anisotropy = aniso;
         const m = createDayNightMaterial(day, night);
         setSunDirection(m, subsolarPoint(latest.current.t));
         dayNight.current = m;
         g.globeMaterial(m);
       })
       .catch(() => {
-        // 낮 텍스처를 못 받으면 예전처럼 밤 텍스처만
-        if (globe.current === g) g.globeImageUrl(`${base}textures/earth-night.webp`);
+        // 낮 텍스처를 못 받으면 임시로 깔아 둔 밤 텍스처가 그대로 남는다
       });
 
     function makeMarker(d: Marker): HTMLElement {
@@ -210,7 +219,7 @@ export function GlobeView(props: GlobeProps) {
   useEffect(() => {
     const sun = subsolarPoint(t);
     if (dayNight.current) setSunDirection(dayNight.current, sun);
-    nightTile.current = antipode(sun);
+    Object.assign(nightTile.current, antipode(sun));
     if (mode.current === 'tiles') globe.current?.tilesData([nightTile.current]);
   }, [t]);
 
