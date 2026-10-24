@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  activeRings, quakeOpacity, ringProgress, RING_MS, timeRange, visibleLaunches, visibleQuakes, WINDOW_MS,
+  activeRings, quakeOpacity, ringProgress, RING_MS, timeRange, visibleFires, visibleLaunches, visibleQuakes, WINDOW_MS,
 } from './timeline.ts';
 
 const H = 3_600_000;
@@ -45,4 +45,10 @@ test('ringProgress: 발생 순간 0 → 3시간 뒤 직전까지 1 미만, 밖�
 test('activeRings: 규모 2.5 이상이고 링 창 안인 지진만', () => {
   const evs = [q('big', T - H, 4), q('small', T - H, 1.2), q('old', T - 4 * H, 5)];
   assert.deepEqual(activeRings(evs, T).map((e) => e.id), ['big']);
+});
+
+test('visibleFires: 시작 뒤부터 진화 전까지, 진화 시각이 없으면 계속', () => {
+  const f = (id, time, endTime) => ({ id, kind: 'fire', time, ...(endTime === undefined ? {} : { endTime }), lat: 0, lng: 0, label: id, url: '' });
+  const fires = [f('future', T + H), f('open', T - H), f('out', T - 2 * H, T - H), f('burning', T - 2 * H, T + H)];
+  assert.deepEqual(visibleFires([...fires, q('q', T - H)], T).map((e) => e.id), ['open', 'burning']);
 });

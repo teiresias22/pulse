@@ -15,6 +15,10 @@ export function visibleLaunches(events: PulseEvent[], t: number): PulseEvent[] {
   return events.filter((e) => e.kind === 'launch' && (e.status === 'upcoming' || e.time <= t));
 }
 
+export function visibleFires(events: PulseEvent[], t: number): PulseEvent[] {
+  return events.filter((e) => e.kind === 'fire' && e.time <= t && (e.endTime === undefined || t < e.endTime));
+}
+
 export function quakeOpacity(e: PulseEvent, t: number): number {
   return Math.max(0.15, 1 - (t - e.time) / WINDOW_MS);
 }
