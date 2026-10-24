@@ -17,6 +17,16 @@ export type PulseEvent = {
 export type StormFix = { time: number; lat: number; lng: number; kts: number };
 export type Storm = { id: string; name: string; track: StormFix[]; closed: number | null; url: string };
 
+// 미국 기상청 토네이도 경보 한 건. end는 갱신·취소로 앞당겨진 실제 종료 시각
+export type TornadoWarning = {
+  id: string;
+  start: number;
+  end: number;
+  area: string;
+  headline: string;
+  geometry: { type: 'Polygon'; coordinates: number[][][] };
+};
+
 export type LayerKey = 'quake' | 'storm' | 'fire' | 'launch' | 'iss';
 export const LAYERS: LayerKey[] = ['quake', 'storm', 'fire', 'launch', 'iss'];
 

@@ -1,0 +1,56 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "geometry": { "type": "Polygon", "coordinates": [[[-97.0, 35.0], [-96.9, 35.0], [-96.9, 35.1], [-97.0, 35.1], [-97.0, 35.0]]] },
+      "properties": {
+        "id": "A1", "messageType": "Alert", "areaDesc": "Cleveland, OK",
+        "headline": "Tornado Warning issued October 20 at 10:00AM CDT until October 20 at 10:45AM CDT",
+        "sent": "2026-10-20T10:00:00-05:00", "effective": "2026-10-20T10:00:00-05:00", "onset": "2026-10-20T10:00:00-05:00",
+        "expires": "2026-10-20T10:45:00-05:00", "ends": "2026-10-20T10:45:00-05:00", "references": []
+      }
+    },
+    {
+      "geometry": { "type": "Polygon", "coordinates": [[[-96.95, 35.0], [-96.85, 35.0], [-96.85, 35.1], [-96.95, 35.0]]] },
+      "properties": {
+        "id": "U1", "messageType": "Update", "areaDesc": "Cleveland, OK",
+        "headline": "Tornado Warning issued October 20 at 10:20AM CDT until October 20 at 10:45AM CDT",
+        "sent": "2026-10-20T10:20:00-05:00", "effective": "2026-10-20T10:20:00-05:00", "onset": "2026-10-20T10:20:00-05:00",
+        "expires": "2026-10-20T10:45:00-05:00", "ends": "2026-10-20T10:45:00-05:00",
+        "references": [{ "identifier": "A1", "sent": "2026-10-20T10:00:00-05:00" }]
+      }
+    },
+    {
+      "geometry": { "type": "Polygon", "coordinates": [[[-96.95, 35.0], [-96.85, 35.0], [-96.85, 35.1], [-96.95, 35.0]]] },
+      "properties": {
+        "id": "C1", "messageType": "Cancel", "areaDesc": "Cleveland, OK", "headline": "Tornado Warning cancelled",
+        "sent": "2026-10-20T10:30:00-05:00", "effective": "2026-10-20T10:30:00-05:00", "onset": "2026-10-20T10:30:00-05:00",
+        "expires": "2026-10-20T10:45:00-05:00", "ends": "2026-10-20T10:45:00-05:00",
+        "references": [{ "identifier": "U1", "sent": "2026-10-20T10:20:00-05:00" }]
+      }
+    },
+    {
+      "geometry": null,
+      "properties": {
+        "id": "A2", "messageType": "Alert", "areaDesc": "Nowhere", "headline": "No polygon",
+        "sent": "2026-10-21T10:00:00Z", "effective": "2026-10-21T10:00:00Z", "onset": "2026-10-21T10:00:00Z",
+        "expires": "2026-10-21T10:30:00Z", "ends": "2026-10-21T10:30:00Z", "references": []
+      }
+    },
+    {
+      "geometry": { "type": "Polygon", "coordinates": [[[-90.0, 30.0], [-89.9, 30.0], [-89.9, 30.1], [-90.0, 30.0]]] },
+      "properties": {
+        "id": "A3", "messageType": "Alert", "areaDesc": "Bad Times", "headline": "Bad times",
+        "sent": "x", "effective": "x", "onset": null, "expires": "x", "ends": null, "references": []
+      }
+    },
+    {
+      "geometry": { "type": "Point", "coordinates": [-90.0, 30.0] },
+      "properties": {
+        "id": "A4", "messageType": "Alert", "areaDesc": "Point", "headline": "Point geometry",
+        "sent": "2026-10-21T10:00:00Z", "effective": "2026-10-21T10:00:00Z", "onset": "2026-10-21T10:00:00Z",
+        "expires": "2026-10-21T10:30:00Z", "ends": "2026-10-21T10:30:00Z", "references": []
+      }
+    }
+  ]
+}
