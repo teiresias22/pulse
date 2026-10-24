@@ -2,15 +2,20 @@ export type LaunchStatus = 'success' | 'failure' | 'upcoming';
 
 export type PulseEvent = {
   id: string;
-  kind: 'quake' | 'launch';
-  time: number; // epoch ms
+  kind: 'quake' | 'launch' | 'fire';
+  time: number; // epoch ms (산불은 시작 시각)
+  endTime?: number; // 산불 진화 시각. 없으면 진행 중
   lat: number;
   lng: number;
-  magnitude?: number;
+  magnitude?: number; // 지진 규모 · 산불 면적(에이커)
   status?: LaunchStatus;
   label: string;
   url: string;
 };
+
+// 태풍 관측점(6시간 간격). track은 시각 오름차순
+export type StormFix = { time: number; lat: number; lng: number; kts: number };
+export type Storm = { id: string; name: string; track: StormFix[]; closed: number | null; url: string };
 
 export type LayerKey = 'quake' | 'launch' | 'iss';
 export const LAYERS: LayerKey[] = ['quake', 'launch', 'iss'];

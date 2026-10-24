@@ -1,0 +1,76 @@
+{
+  "title": "EONET Events",
+  "events": [
+    {
+      "id": "EONET_1",
+      "title": "Typhoon Test",
+      "closed": null,
+      "categories": [{ "id": "severeStorms", "title": "Severe Storms" }],
+      "sources": [{ "id": "JTWC", "url": "https://www.metoc.navy.mil/jtwc/products/wp2626.tcw" }],
+      "geometry": [
+        { "magnitudeValue": 35.0, "magnitudeUnit": "kts", "date": "2026-10-21T06:00:00Z", "type": "Point", "coordinates": [179.0, 15.0] },
+        { "magnitudeValue": 30.0, "magnitudeUnit": "kts", "date": "2026-10-21T00:00:00Z", "type": "Point", "coordinates": [178.0, 14.0] },
+        { "magnitudeValue": 990.0, "magnitudeUnit": "mb", "date": "2026-10-21T12:00:00Z", "type": "Point", "coordinates": [180.0, 16.0] }
+      ]
+    },
+    {
+      "id": "EONET_2",
+      "title": "Storm Without Fixes",
+      "closed": "2026-10-20T00:00:00Z",
+      "categories": [{ "id": "severeStorms", "title": "Severe Storms" }],
+      "sources": [],
+      "geometry": [
+        { "magnitudeValue": 40.0, "magnitudeUnit": "kts", "date": "2026-10-19T00:00:00Z", "type": "Point", "coordinates": [200.0, 95.0] }
+      ]
+    },
+    {
+      "id": "EONET_3",
+      "title": "Wildfire BEE HAVEN, Hamilton, Florida",
+      "closed": null,
+      "categories": [{ "id": "wildfires", "title": "Wildfires" }],
+      "sources": [{ "id": "IRWIN", "url": "https://irwin.doi.gov/observer/incidents/2026-FLFLS-260601105" }],
+      "geometry": [
+        { "magnitudeValue": 2060.0, "magnitudeUnit": "acres", "date": "2026-10-22T21:45:00Z", "type": "Point", "coordinates": [-82.8577778, 30.4952778] }
+      ]
+    },
+    {
+      "id": "EONET_4",
+      "title": "Wildfire Closed, Oregon",
+      "closed": "2026-10-23T00:00:00Z",
+      "categories": [{ "id": "wildfires", "title": "Wildfires" }],
+      "sources": [{ "id": "IRWIN", "url": "javascript:alert(1)" }],
+      "geometry": [
+        { "magnitudeValue": null, "magnitudeUnit": null, "date": "2026-10-20T10:00:00Z", "type": "Point", "coordinates": [-120.5, 44.0] }
+      ]
+    },
+    {
+      "id": "EONET_5",
+      "title": "Volcano Elsewhere",
+      "closed": null,
+      "categories": [{ "id": "volcanoes", "title": "Volcanoes" }],
+      "sources": [],
+      "geometry": [
+        { "magnitudeValue": null, "magnitudeUnit": null, "date": "2026-10-20T00:00:00Z", "type": "Point", "coordinates": [10.0, 10.0] }
+      ]
+    },
+    {
+      "id": "EONET_6",
+      "title": "Wildfire Bad Coords",
+      "closed": null,
+      "categories": [{ "id": "wildfires", "title": "Wildfires" }],
+      "sources": [],
+      "geometry": [
+        { "magnitudeValue": 10.0, "magnitudeUnit": "acres", "date": "2026-10-20T00:00:00Z", "type": "Point", "coordinates": [-500.0, 10.0] }
+      ]
+    },
+    {
+      "title": "No Id",
+      "closed": null,
+      "categories": [{ "id": "wildfires", "title": "Wildfires" }],
+      "sources": [],
+      "geometry": [
+        { "magnitudeValue": 10.0, "magnitudeUnit": "acres", "date": "2026-10-20T00:00:00Z", "type": "Point", "coordinates": [10.0, 10.0] }
+      ]
+    }
+  ]
+}
