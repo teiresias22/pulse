@@ -7,7 +7,7 @@ import {
   AURORA_EQ_COLOR, AURORA_POLE_COLOR, FIRE_COLOR, fireRadius, ISS_COLOR, ISS_PATH_COLOR, LAUNCH_COLOR, quakeColor, quakeRadius,
   RING_RGB, STORM_PATH_COLOR, TORNADO_FILL, TORNADO_STROKE,
 } from '../lib/style.ts';
-import { auroraRings } from '../lib/aurora.ts';
+import { auroraRings, GEOMAG_NORTH, GEOMAG_SOUTH, ovalLatitude, ring } from '../lib/aurora.ts';
 import { tornadoCenter } from '../sources/nws.ts';
 import { stormAt, stormCategory, trackUntil, type StormCategory } from '../lib/storm.ts';
 import { msg } from '../i18n.ts';
@@ -35,7 +35,7 @@ export type GlobeProps = {
 
 type Marker = {
   lat: number; lng: number; alt: number;
-  launch?: PulseEvent; iss?: true; storm?: Storm; cat?: StormCategory; tornado?: TornadoWarning; el?: HTMLElement;
+  launch?: PulseEvent; iss?: true; storm?: Storm; cat?: StormCategory; tornado?: TornadoWarning; aurora?: true; el?: HTMLElement;
 };
 // 경로 레이어(ISS 궤도 + 태풍 경로 + 오로라 띠). altKm이 없는 점은 지표 바로 위
 type PathPoint = { lat: number; lng: number; altKm?: number };
@@ -227,6 +227,14 @@ export function GlobeView(props: GlobeProps) {
           ev.stopPropagation();
           if (d.tornado) latest.current.onSelect({ kind: 'tornado', tornado: d.tornado });
         };
+      } else if (d.aurora) {
+        b.className = 'marker marker-aurora';
+        b.textContent = '🌌';
+        b.setAttribute('aria-label', msg.layer.aurora);
+        b.onclick = (ev) => {
+          ev.stopPropagation();
+          latest.current.onSelect({ kind: 'aurora' });
+        };
       }
       return b;
     }
@@ -298,6 +306,10 @@ export function GlobeView(props: GlobeProps) {
   // 태풍 마커는 id로 기억한다(5분마다 다시 읽은 캐시가 새 Storm 객체를 주므로)
   const stormMarkerOf = useRef(new Map<string, Marker>());
   const tornadoMarkerOf = useRef(new WeakMap<TornadoWarning, Marker>());
+  const auroraMarkers = useRef<Marker[]>([
+    { lat: 0, lng: 0, alt: STORM_ALT, aurora: true },
+    { lat: 0, lng: 0, alt: STORM_ALT, aurora: true },
+  ]);
   useEffect(() => {
     const markers = launches.map((e) => {
       let m = markerOf.current.get(e);
@@ -328,10 +340,20 @@ export function GlobeView(props: GlobeProps) {
       }
       markers.push(m);
     }
+    // 오로라 고리는 선이 가늘어 누르기 어렵다 — 남쪽 경계 위 한 점(북: 자기극의 남쪽, 남: 자기극의 북쪽)에 누를 마커를 둔다
+    if (kp) {
+      const eq = ovalLatitude(kp.kp);
+      const [north, south] = auroraMarkers.current;
+      if (north && south) {
+        Object.assign(north, ring(GEOMAG_NORTH, eq, 2)[1]);
+        Object.assign(south, ring(GEOMAG_SOUTH, eq, 2)[0]);
+        markers.push(north, south);
+      }
+    }
     const m = issMarker.current;
     if (iss) Object.assign(m, { lat: iss.lat, lng: iss.lng, alt: iss.altKm / EARTH_KM });
     globe.current?.htmlElementsData(iss ? [...markers, m] : markers);
-  }, [launches, storms, tornadoes, t, iss]);
+  }, [launches, storms, tornadoes, kp, t, iss]);
 
   // 태풍 경로 객체도 id별로 재사용한다(새 객체 → LineMaterial 재생성 → 셰이더 재컴파일)
   const stormPathOf = useRef(new Map<string, Path>());
