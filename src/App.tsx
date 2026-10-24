@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { GlobeView } from './components/GlobeView.tsx';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { loadQuakes } from './sources/usgs.ts';
 import { loadLaunches } from './sources/launches.ts';
 import { isTleStale, loadTle, makePropagator, orbitPath, type Tle } from './sources/iss.ts';
@@ -14,6 +13,9 @@ import { decodeHash, encodeHash } from './lib/hash.ts';
 import { track } from './lib/analytics.ts';
 import { HOUR, LAYERS, MINUTE, SPEEDS, type LayerKey, type LayerStatus, type Loaded, type PulseEvent, type Selection } from './model.ts';
 import './App.css';
+
+// globe.gl·three는 무거워서 별도 청크로 — 헤더·스크러버가 먼저 그려지고 WebGL 없는 폴백은 받지 않는다
+const GlobeView = lazy(() => import('./components/GlobeView.tsx').then((m) => ({ default: m.GlobeView })));
 
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const webgl = hasWebGL();
@@ -201,18 +203,20 @@ export default function App() {
 
   return (
     <div className="app">
-      <GlobeView
-        t={t}
-        quakes={layers.includes('quake') ? visibleQuakes(quakes, t) : []}
-        launches={layers.includes('launch') ? visibleLaunches(launches, t) : []}
-        iss={iss}
-        orbit={orbit}
-        issStale={issStale}
-        reducedMotion={reducedMotion}
-        follow={follow}
-        onSelect={select}
-        onUserInteract={() => setFollow(false)}
-      />
+      <Suspense fallback={<div className="globe" />}>
+        <GlobeView
+          t={t}
+          quakes={layers.includes('quake') ? visibleQuakes(quakes, t) : []}
+          launches={layers.includes('launch') ? visibleLaunches(launches, t) : []}
+          iss={iss}
+          orbit={orbit}
+          issStale={issStale}
+          reducedMotion={reducedMotion}
+          follow={follow}
+          onSelect={select}
+          onUserInteract={() => setFollow(false)}
+        />
+      </Suspense>
       <Header
         live={live}
         layers={layers}

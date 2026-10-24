@@ -85,6 +85,8 @@ export function GlobeView(props: GlobeProps) {
       .pathColor(() => 'rgba(245, 247, 255, 0.55)')
       .pathStroke(1.2)
       .pathTransitionDuration(0);
+    // 모바일 GPU 부담 상한(PageSpeed 모바일이 시간 초과됐다). globe.gl도 생성 시 2로 묶지만 기본값이 바뀌어도 유지
+    g.renderer().setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
     function makeMarker(d: Marker): HTMLElement {
       const b = document.createElement('button');
@@ -126,10 +128,14 @@ export function GlobeView(props: GlobeProps) {
 
     const ro = new ResizeObserver(() => g.width(host.clientWidth).height(host.clientHeight));
     ro.observe(host);
+    // 탭이 숨겨지면 렌더 루프를 멈춘다
+    const onVisibility = () => (document.hidden ? g.pauseAnimation() : g.resumeAnimation());
+    document.addEventListener('visibilitychange', onVisibility);
     globe.current = g;
 
     return () => {
       ro.disconnect();
+      document.removeEventListener('visibilitychange', onVisibility);
       window.clearTimeout(resumeTimer.current);
       controls.removeEventListener('start', onStart);
       controls.removeEventListener('end', onEnd);
