@@ -45,6 +45,9 @@ export function GlobeView(props: GlobeProps) {
   });
   // ISS 마커 객체를 재사용해야 globe.gl이 DOM 요소를 매번 새로 만들지 않는다
   const issMarker = useRef<Marker>({ lat: 0, lng: 0, alt: 0, iss: true });
+  // 궤도선 데이터도 같은 객체를 고쳐 쓴다. 새 객체를 넘기면 three-globe가 선과 LineMaterial을 버려
+  // t가 바뀔 때마다 셰이더를 다시 컴파일했다(재생 중 초당 수 회)
+  const orbitPath = useRef<{ points: IssPos[] }>({ points: [] });
   const dayNight = useRef<ShaderMaterial | null>(null);
   const mode = useRef<GlobeMode>('shader');
   const nightTile = useRef<GeoPoint>(antipode(subsolarPoint(props.t)));
@@ -248,7 +251,8 @@ export function GlobeView(props: GlobeProps) {
     const g = globe.current;
     if (!g) return;
     g.pathDashLength(issStale ? 0.02 : 1).pathDashGap(issStale ? 0.015 : 0);
-    g.pathsData(orbit.length ? [{ points: orbit }] : []);
+    orbitPath.current.points = orbit;
+    g.pathsData(orbit.length ? [orbitPath.current] : []);
   }, [orbit, issStale]);
 
   useEffect(() => {
