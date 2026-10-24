@@ -1,6 +1,9 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { loadQuakes } from './sources/usgs.ts';
 import { loadLaunches } from './sources/launches.ts';
+import { loadTornadoes } from './sources/nws.ts';
+import { loadKp } from './sources/kp.ts';
+import { kpAt } from './lib/aurora.ts';
 import { loadEonet, type EonetData } from './sources/eonet.ts';
 import { isTleStale, loadTle, makePropagator, orbitPath, type Tle } from './sources/iss.ts';
 import { Header } from './components/Header.tsx';
@@ -9,10 +12,10 @@ import { EventCard } from './components/EventCard.tsx';
 import { Fallback } from './components/Fallback.tsx';
 import { hasWebGL } from './lib/webgl.ts';
 import { Scrubber } from './components/Scrubber.tsx';
-import { timeRange, visibleFires, visibleLaunches, visibleQuakes } from './lib/timeline.ts';
+import { timeRange, visibleFires, visibleLaunches, visibleQuakes, visibleTornadoes } from './lib/timeline.ts';
 import { decodeHash, encodeHash } from './lib/hash.ts';
 import { track } from './lib/analytics.ts';
-import { HOUR, LAYERS, MINUTE, SPEEDS, type LayerKey, type LayerStatus, type Loaded, type PulseEvent, type Selection, type Storm } from './model.ts';
+import { HOUR, LAYERS, MINUTE, SPEEDS, type LayerKey, type LayerStatus, type KpPoint, type Loaded, type PulseEvent, type Selection, type Storm, type TornadoWarning } from './model.ts';
 import './App.css';
 
 // globe.gl·three는 무거워서 별도 청크로 — 헤더·스크러버가 먼저 그려지고 WebGL 없는 폴백은 받지 않는다
@@ -22,8 +25,8 @@ const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matc
 const webgl = hasWebGL();
 
 // 출처 하나에 로더 하나. 라이브 모드에서 5분마다 전부 부르고, 실제로 받을지는 출처별 캐시가 정한다
-// (지진 1분 · 태풍·산불 30분 · 발사 1시간 · ISS 1일). 발사가 한도 초과로 막혀 있으면 로더가 네트워크 없이 옛 캐시를 돌려준다
-const SOURCES: LayerKey[] = ['quake', 'launch', 'storm', 'iss']; // fire는 storm과 같은 EONET 요청
+// (지진 1분 · 토네이도 15분 · 태풍·산불·Kp 30분 · 발사 1시간 · ISS 1일). 발사가 한도 초과로 막혀 있으면 로더가 네트워크 없이 옛 캐시를 돌려준다
+const SOURCES: LayerKey[] = ['quake', 'launch', 'storm', 'tornado', 'aurora', 'iss']; // fire는 storm과 같은 EONET 요청
 const layerOf = (s: Selection): LayerKey => (s.kind === 'event' ? s.event.kind : s.kind);
 
 export default function App() {
@@ -41,13 +44,17 @@ export default function App() {
   const [launches, setLaunches] = useState<PulseEvent[]>([]);
   const [storms, setStorms] = useState<Storm[]>([]);
   const [fires, setFires] = useState<PulseEvent[]>([]);
+  const [tornadoes, setTornadoes] = useState<TornadoWarning[]>([]);
+  const [kpPoints, setKpPoints] = useState<KpPoint[]>([]);
   const [tle, setTle] = useState<Tle | null>(null);
   const [status, setStatus] = useState<Record<LayerKey, LayerStatus>>({
     quake: { state: 'loading' },
     storm: { state: 'loading' },
+    tornado: { state: 'loading' },
     fire: { state: 'loading' },
     launch: { state: 'loading' },
     iss: { state: 'loading' },
+    aurora: { state: 'loading' },
   });
   const [follow, setFollow] = useState(false);
   const [selected, setSelected] = useState<Selection | null>(null);
@@ -81,6 +88,8 @@ export default function App() {
           setFires(d.fires);
         });
       }
+      if (key === 'tornado') return run(['tornado'], () => loadTornadoes(), setTornadoes);
+      if (key === 'aurora') return run(['aurora'], () => loadKp(), setKpPoints);
       return run(['iss'], () => loadTle(), setTle);
     },
     [run],
@@ -200,6 +209,7 @@ export default function App() {
   const iss = layers.includes('iss') && positionAt ? positionAt(t) : null;
   const orbit = iss && positionAt ? orbitPath(positionAt, t) : [];
   const issStale = tle ? isTleStale(tle, t) : false;
+  const kpNow = layers.includes('aurora') ? kpAt(kpPoints, t) : null;
   const toggleLayer = (k: LayerKey) => {
     // 끄는 레이어의 카드가 열려 있으면 닫고 따라가기도 멈춘다
     const open = selected && layerOf(selected);
@@ -232,6 +242,8 @@ export default function App() {
           launches={layers.includes('launch') ? visibleLaunches(launches, t) : []}
           storms={layers.includes('storm') ? storms : []}
           fires={layers.includes('fire') ? visibleFires(fires, t) : []}
+          tornadoes={layers.includes('tornado') ? visibleTornadoes(tornadoes, t) : []}
+          kp={kpNow}
           iss={iss}
           orbit={orbit}
           issStale={issStale}

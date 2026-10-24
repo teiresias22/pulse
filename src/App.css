@@ -55,6 +55,8 @@ body {
 .storm-c12 { font-size: 18px; text-shadow: 0 0 8px #bdb2ff; }
 .storm-c3 { font-size: 24px; text-shadow: 0 0 10px #ff70d6; }
 .sym-fire { color: #ff6b1a; }
+.marker-tornado { font-size: 18px; }
+.sym-aurora { color: #5affa0; }
 
 .panel {
   position: absolute;

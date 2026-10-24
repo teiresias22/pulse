@@ -21,3 +21,8 @@ export const ISS_PATH_COLOR = 'rgba(245, 247, 255, 0.55)';
 export function fireRadius(acres: number): number {
   return 0.1 + Math.log10(Math.max(acres, 1)) * 0.06;
 }
+
+export const TORNADO_FILL = 'rgba(239, 71, 111, 0.45)';
+export const TORNADO_STROKE = '#ef476f';
+export const AURORA_EQ_COLOR = 'rgba(90, 255, 160, 0.85)';
+export const AURORA_POLE_COLOR = 'rgba(90, 255, 160, 0.35)';
