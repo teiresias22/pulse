@@ -5,6 +5,10 @@ import type { PulseEvent, Selection } from '../model.ts';
 import { activeRings, quakeOpacity, ringProgress } from '../lib/timeline.ts';
 import { ISS_COLOR, LAUNCH_COLOR, quakeColor, quakeRadius, RING_RGB } from '../lib/style.ts';
 import { msg } from '../i18n.ts';
+import { MeshBasicMaterial, TextureLoader, type ShaderMaterial } from 'three';
+import { antipode, subsolarPoint, type GeoPoint } from '../lib/sun.ts';
+import { nextMode, type GlobeMode } from '../lib/globeMode.ts';
+import { createDayNightMaterial, setSunDirection } from '../lib/dayNightMaterial.ts';
 
 export type GlobeProps = {
   t: number;
@@ -24,6 +28,12 @@ type Marker = { lat: number; lng: number; alt: number; launch?: PulseEvent; iss?
 const EARTH_KM = 6371;
 const LAUNCH_ALT = 0.12;
 const SYMBOL = { success: '▲', failure: '✕', upcoming: '◇' } as const;
+// 가까이 확대했을 때만 쓰는 NASA GIBS 블루 마블 타일(키 없음, CORS *)
+type TileUrl = (x: number, y: number, level: number) => string;
+const GIBS_TILE: TileUrl = (x, y, level) =>
+  `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlueMarble_ShadedRelief_Bathymetry/default/2004-08/GoogleMapsCompatible_Level8/${level}/${y}/${x}.jpeg`;
+// 타일 모드의 밤: 조명을 돌리면 지진 점까지 어두워지므로 반투명 반구를 덮는다
+const NIGHT_MATERIAL = new MeshBasicMaterial({ color: '#000000', transparent: true, opacity: 0.55, depthWrite: false });
 
 export function GlobeView(props: GlobeProps) {
   const el = useRef<HTMLDivElement>(null);
@@ -35,6 +45,9 @@ export function GlobeView(props: GlobeProps) {
   });
   // ISS 마커 객체를 재사용해야 globe.gl이 DOM 요소를 매번 새로 만들지 않는다
   const issMarker = useRef<Marker>({ lat: 0, lng: 0, alt: 0, iss: true });
+  const dayNight = useRef<ShaderMaterial | null>(null);
+  const mode = useRef<GlobeMode>('shader');
+  const nightTile = useRef<GeoPoint>(antipode(subsolarPoint(props.t)));
   // 자동 회전 재개 타이머: 마지막 조작·따라가기 종료 10초 뒤에만, 따라가기 중에는 켜지 않는다
   const resumeTimer = useRef<number | undefined>(undefined);
   const scheduleResume = () => {
@@ -49,7 +62,6 @@ export function GlobeView(props: GlobeProps) {
     const host = el.current;
     if (!host) return;
     const g = new Globe(host)
-      .globeImageUrl(`${import.meta.env.BASE_URL}textures/earth-night.webp`)
       .backgroundImageUrl(`${import.meta.env.BASE_URL}textures/night-sky.webp`)
       .pointLat('lat')
       .pointLng('lng')
@@ -84,9 +96,45 @@ export function GlobeView(props: GlobeProps) {
       .pathPointAlt((p) => (p as IssPos).altKm / EARTH_KM)
       .pathColor(() => 'rgba(245, 247, 255, 0.55)')
       .pathStroke(1.2)
-      .pathTransitionDuration(0);
+      .pathTransitionDuration(0)
+      .tileLat('lat')
+      .tileLng('lng')
+      .tileAltitude(0.004)
+      .tileWidth(180)
+      .tileHeight(180)
+      .tileUseGlobeProjection(false)
+      .tileMaterial(() => NIGHT_MATERIAL)
+      .tilesTransitionDuration(0)
+      .globeTileEngineMaxLevel(8)
+      .onZoom(({ altitude }) => applyMode(nextMode(mode.current, altitude)));
     // 모바일 GPU 부담 상한(PageSpeed 모바일이 시간 초과됐다). globe.gl도 생성 시 2로 묶지만 기본값이 바뀌어도 유지
     g.renderer().setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+    // 고도에 따라 셰이더 지구 ↔ GIBS 타일. 타일 엔진 URL을 끄면(null) three-globe가 셰이더 지구를 다시 보인다
+    function applyMode(next: GlobeMode) {
+      if (next === mode.current) return;
+      mode.current = next;
+      g.globeTileEngineUrl(next === 'tiles' ? GIBS_TILE : (null as unknown as TileUrl));
+      g.tilesData(next === 'tiles' ? [nightTile.current] : []);
+    }
+
+    const base = import.meta.env.BASE_URL;
+    const loader = new TextureLoader();
+    Promise.all([
+      loader.loadAsync(`${base}textures/earth-day.webp`),
+      loader.loadAsync(`${base}textures/earth-night.webp`),
+    ])
+      .then(([day, night]) => {
+        if (globe.current !== g) return;
+        const m = createDayNightMaterial(day, night);
+        setSunDirection(m, subsolarPoint(latest.current.t));
+        dayNight.current = m;
+        g.globeMaterial(m);
+      })
+      .catch(() => {
+        // 낮 텍스처를 못 받으면 예전처럼 밤 텍스처만
+        if (globe.current === g) g.globeImageUrl(`${base}textures/earth-night.webp`);
+      });
 
     function makeMarker(d: Marker): HTMLElement {
       const b = document.createElement('button');
@@ -139,6 +187,13 @@ export function GlobeView(props: GlobeProps) {
       window.clearTimeout(resumeTimer.current);
       controls.removeEventListener('start', onStart);
       controls.removeEventListener('end', onEnd);
+      const m = dayNight.current;
+      if (m) {
+        (m.uniforms.dayTexture.value as { dispose(): void }).dispose();
+        (m.uniforms.nightTexture.value as { dispose(): void }).dispose();
+        m.dispose();
+      }
+      dayNight.current = null;
       g._destructor();
       globe.current = null;
     };
@@ -150,6 +205,14 @@ export function GlobeView(props: GlobeProps) {
   useEffect(() => {
     globe.current?.pointsData([...quakes, ...launches]);
   }, [t, quakes, launches]);
+
+  // 스크러버 시각의 태양 위치로 셰이더 밤낮 경계와 타일 모드의 밤 반구를 옮긴다
+  useEffect(() => {
+    const sun = subsolarPoint(t);
+    if (dayNight.current) setSunDirection(dayNight.current, sun);
+    nightTile.current = antipode(sun);
+    if (mode.current === 'tiles') globe.current?.tilesData([nightTile.current]);
+  }, [t]);
 
   useEffect(() => {
     globe.current?.ringsData(reducedMotion ? [] : activeRings(quakes, t));
