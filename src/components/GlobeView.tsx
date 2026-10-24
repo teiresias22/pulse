@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import Globe, { type GlobeInstance } from 'globe.gl';
 import type { IssPos } from '../sources/iss.ts';
 import type { KpPoint, PulseEvent, Selection, Storm, TornadoWarning } from '../model.ts';
-import { activeRings, quakeOpacity, ringProgress } from '../lib/timeline.ts';
+import { activeRings, quakeOpacity, ringProgress, visibleTornadoes } from '../lib/timeline.ts';
 import {
   AURORA_EQ_COLOR, AURORA_POLE_COLOR, FIRE_COLOR, fireRadius, ISS_COLOR, ISS_PATH_COLOR, LAUNCH_COLOR, quakeColor, quakeRadius,
   RING_RGB, STORM_PATH_COLOR, TORNADO_FILL, TORNADO_STROKE,
@@ -84,6 +84,7 @@ export function GlobeView(props: GlobeProps) {
   useEffect(() => {
     const host = el.current;
     if (!host) return;
+    const isActive = (d: object) => visibleTornadoes([d as TornadoWarning], latest.current.t).length > 0;
     const g = new Globe(host)
       // 텍스처를 받는 동안 밤 텍스처를 임시로 보인다(globeMaterial이 나중에 재질을 바꾼다)
       .globeImageUrl(`${import.meta.env.BASE_URL}textures/earth-night.webp`)
@@ -134,15 +135,21 @@ export function GlobeView(props: GlobeProps) {
       .pathStroke((d: object) => ((d as Path).aurora ? 2.5 : 1.2))
       .pathTransitionDuration(0)
       .polygonGeoJsonGeometry('geometry')
-      .polygonCapColor(() => TORNADO_FILL)
-      .polygonSideColor(() => 'rgba(0, 0, 0, 0)')
-      .polygonStrokeColor(() => TORNADO_STROKE)
+      // 지난 7일 경보를 모두 넣어 두고 t에 유효한 것만 색을 칠한다. 경보가 나타날 때마다 메시를 만들고 버리면
+      // 마지막 메시와 함께 재질이 해제돼 재생 중 셰이더를 다시 컴파일했다(빈 색 = 면·테두리 없음, 재질은 유지)
+      .polygonCapColor((d: object) => (isActive(d) ? TORNADO_FILL : ''))
+      .polygonSideColor(() => '')
+      .polygonStrokeColor((d: object) => (isActive(d) ? TORNADO_STROKE : null))
       .polygonAltitude(0.008)
       .polygonsTransitionDuration(0)
-      .onPolygonClick((d) => latest.current.onSelect({ kind: 'tornado', tornado: d as TornadoWarning }))
+      .onPolygonClick((d) => {
+        if (isActive(d)) latest.current.onSelect({ kind: 'tornado', tornado: d as TornadoWarning });
+      })
       .onPathClick((d) => {
         if ((d as Path).aurora) latest.current.onSelect({ kind: 'aurora' });
       })
+      // 누를 수 있는 경로는 오로라 고리뿐이다
+      .showPointerCursor((type, d) => type !== 'path' || Boolean((d as Path | null)?.aurora))
       .tileLat('lat')
       .tileLng('lng')
       .tileAltitude(0.004)
@@ -283,10 +290,10 @@ export function GlobeView(props: GlobeProps) {
     globe.current?.pointsData([...quakes, ...fires, ...launches]);
   }, [t, quakes, fires, launches]);
 
-  // 토네이도 경보 구역. 경보 객체는 다시 받기 전까지 같으므로 three-globe가 메시를 재사용한다
+  // 토네이도 경보 구역(지난 7일 전부). 같은 객체를 다시 넘겨 t에 맞춰 색만 다시 칠한다
   useEffect(() => {
     globe.current?.polygonsData(tornadoes);
-  }, [tornadoes]);
+  }, [tornadoes, t]);
 
   // 스크러버 시각의 태양 위치로 셰이더 밤낮 경계와 타일 모드의 밤 반구를 옮긴다
   useEffect(() => {
@@ -332,7 +339,7 @@ export function GlobeView(props: GlobeProps) {
       Object.assign(m, { lat: pos.lat, lng: pos.lng, storm: s, cat });
       markers.push(m);
     }
-    for (const w of tornadoes) {
+    for (const w of visibleTornadoes(tornadoes, t)) {
       let m = tornadoMarkerOf.current.get(w);
       if (!m) {
         m = { ...tornadoCenter(w), alt: TORNADO_ALT, tornado: w };

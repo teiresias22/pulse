@@ -12,7 +12,7 @@ import { EventCard } from './components/EventCard.tsx';
 import { Fallback } from './components/Fallback.tsx';
 import { hasWebGL } from './lib/webgl.ts';
 import { Scrubber } from './components/Scrubber.tsx';
-import { timeRange, visibleFires, visibleLaunches, visibleQuakes, visibleTornadoes } from './lib/timeline.ts';
+import { timeRange, visibleFires, visibleLaunches, visibleQuakes } from './lib/timeline.ts';
 import { decodeHash, encodeHash } from './lib/hash.ts';
 import { track } from './lib/analytics.ts';
 import { HOUR, LAYERS, MINUTE, SPEEDS, type LayerKey, type LayerStatus, type KpPoint, type Loaded, type PulseEvent, type Selection, type Storm, type TornadoWarning } from './model.ts';
@@ -242,7 +242,7 @@ export default function App() {
           launches={layers.includes('launch') ? visibleLaunches(launches, t) : []}
           storms={layers.includes('storm') ? storms : []}
           fires={layers.includes('fire') ? visibleFires(fires, t) : []}
-          tornadoes={layers.includes('tornado') ? visibleTornadoes(tornadoes, t) : []}
+          tornadoes={layers.includes('tornado') ? tornadoes : []}
           kp={kpNow}
           iss={iss}
           orbit={orbit}
@@ -266,10 +266,12 @@ export default function App() {
       {selected && (
         <EventCard
           selection={
-            // 태풍 카드는 30분마다 새로 받은 경로로 보인다(지도 마커와 같은 값)
+            // 태풍·토네이도 카드는 새로 받은 데이터로 보인다(지도 마커와 같은 값 — 갱신·취소된 경보의 종료 시각 등)
             selected.kind === 'storm'
               ? { kind: 'storm', storm: storms.find((s) => s.id === selected.storm.id) ?? selected.storm }
-              : selected
+              : selected.kind === 'tornado'
+                ? { kind: 'tornado', tornado: tornadoes.find((w) => w.id === selected.tornado.id) ?? selected.tornado }
+                : selected
           }
           t={t}
           iss={iss}
