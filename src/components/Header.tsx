@@ -3,7 +3,7 @@ import { LAYERS, type LayerKey, type LayerStatus } from '../model.ts';
 import { fmtAgo, msg } from '../i18n.ts';
 import { track } from '../lib/analytics.ts';
 
-const ICON: Record<LayerKey, string> = { quake: '●', launch: '▲', iss: '◉' };
+const ICON: Record<LayerKey, string> = { quake: '●', storm: '🌀', fire: '🔥', launch: '▲', iss: '◉' };
 
 type Props = {
   live: boolean;

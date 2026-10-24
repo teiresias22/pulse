@@ -12,3 +12,12 @@ export function quakeColor(mag: number, alpha: number): string {
 export function quakeRadius(mag: number): number {
   return 0.12 + Math.max(mag, 0) * 0.1;
 }
+
+export const FIRE_COLOR = '#ff6b1a';
+export const STORM_PATH_COLOR = 'rgba(189, 178, 255, 0.7)';
+export const ISS_PATH_COLOR = 'rgba(245, 247, 255, 0.55)';
+
+// 산불 기둥 반지름(도). 면적(에이커)에 로그 비례, 면적이 없으면 최소
+export function fireRadius(acres: number): number {
+  return 0.1 + Math.log10(Math.max(acres, 1)) * 0.06;
+}

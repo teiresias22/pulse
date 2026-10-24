@@ -1,6 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { loadQuakes } from './sources/usgs.ts';
 import { loadLaunches } from './sources/launches.ts';
+import { loadEonet, type EonetData } from './sources/eonet.ts';
 import { isTleStale, loadTle, makePropagator, orbitPath, type Tle } from './sources/iss.ts';
 import { Header } from './components/Header.tsx';
 import { Legend } from './components/Legend.tsx';
@@ -8,10 +9,10 @@ import { EventCard } from './components/EventCard.tsx';
 import { Fallback } from './components/Fallback.tsx';
 import { hasWebGL } from './lib/webgl.ts';
 import { Scrubber } from './components/Scrubber.tsx';
-import { timeRange, visibleLaunches, visibleQuakes } from './lib/timeline.ts';
+import { timeRange, visibleFires, visibleLaunches, visibleQuakes } from './lib/timeline.ts';
 import { decodeHash, encodeHash } from './lib/hash.ts';
 import { track } from './lib/analytics.ts';
-import { HOUR, LAYERS, MINUTE, SPEEDS, type LayerKey, type LayerStatus, type Loaded, type PulseEvent, type Selection } from './model.ts';
+import { HOUR, LAYERS, MINUTE, SPEEDS, type LayerKey, type LayerStatus, type Loaded, type PulseEvent, type Selection, type Storm } from './model.ts';
 import './App.css';
 
 // globe.gl·three는 무거워서 별도 청크로 — 헤더·스크러버가 먼저 그려지고 WebGL 없는 폴백은 받지 않는다
@@ -21,8 +22,8 @@ const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matc
 const webgl = hasWebGL();
 
 // 출처 하나에 로더 하나. 라이브 모드에서 5분마다 전부 부르고, 실제로 받을지는 출처별 캐시가 정한다
-// (지진 1분 · 발사 1시간 · ISS 1일). 발사가 한도 초과로 막혀 있으면 로더가 네트워크 없이 옛 캐시를 돌려준다
-const SOURCES: LayerKey[] = ['quake', 'launch', 'iss'];
+// (지진 1분 · 태풍·산불 30분 · 발사 1시간 · ISS 1일). 발사가 한도 초과로 막혀 있으면 로더가 네트워크 없이 옛 캐시를 돌려준다
+const SOURCES: LayerKey[] = ['quake', 'launch', 'storm', 'iss']; // fire는 storm과 같은 EONET 요청
 
 export default function App() {
   const [initial] = useState(() => decodeHash(window.location.hash));
@@ -37,31 +38,43 @@ export default function App() {
   const [speed, setSpeed] = useState(SPEEDS[0]);
   const [quakes, setQuakes] = useState<PulseEvent[]>([]);
   const [launches, setLaunches] = useState<PulseEvent[]>([]);
+  const [storms, setStorms] = useState<Storm[]>([]);
+  const [fires, setFires] = useState<PulseEvent[]>([]);
   const [tle, setTle] = useState<Tle | null>(null);
   const [status, setStatus] = useState<Record<LayerKey, LayerStatus>>({
     quake: { state: 'loading' },
+    storm: { state: 'loading' },
+    fire: { state: 'loading' },
     launch: { state: 'loading' },
     iss: { state: 'loading' },
   });
   const [follow, setFollow] = useState(false);
   const [selected, setSelected] = useState<Selection | null>(null);
 
-  const run = useCallback(async <T,>(key: LayerKey, loader: () => Promise<Loaded<T>>, apply: (v: T) => void) => {
-    setStatus((s) => ({ ...s, [key]: { state: 'loading' } }));
+  const run = useCallback(async <T,>(keys: LayerKey[], loader: () => Promise<Loaded<T>>, apply: (v: T) => void) => {
+    const set = (st: LayerStatus) => setStatus((s) => ({ ...s, ...Object.fromEntries(keys.map((k) => [k, st])) }));
+    set({ state: 'loading' });
     try {
       const r = await loader();
       apply(r.value);
-      setStatus((s) => ({ ...s, [key]: { state: 'ok', fetchedAt: r.fetchedAt, stale: r.stale } }));
+      set({ state: 'ok', fetchedAt: r.fetchedAt, stale: r.stale });
     } catch {
-      setStatus((s) => ({ ...s, [key]: { state: 'error' } }));
+      set({ state: 'error' });
     }
   }, []);
 
   const load = useCallback(
     (key: LayerKey) => {
-      if (key === 'quake') return run('quake', () => loadQuakes(), setQuakes);
-      if (key === 'launch') return run('launch', () => loadLaunches(), setLaunches);
-      return run('iss', () => loadTle(), setTle);
+      if (key === 'quake') return run(['quake'], () => loadQuakes(), setQuakes);
+      if (key === 'launch') return run(['launch'], () => loadLaunches(), setLaunches);
+      // 태풍·산불은 EONET 한 번의 응답을 나눠 쓴다
+      if (key === 'storm' || key === 'fire') {
+        return run(['storm', 'fire'], () => loadEonet(), (d: EonetData) => {
+          setStorms(d.storms);
+          setFires(d.fires);
+        });
+      }
+      return run(['iss'], () => loadTle(), setTle);
     },
     [run],
   );
@@ -210,6 +223,8 @@ export default function App() {
           t={t}
           quakes={layers.includes('quake') ? visibleQuakes(quakes, t) : []}
           launches={layers.includes('launch') ? visibleLaunches(launches, t) : []}
+          storms={layers.includes('storm') ? storms : []}
+          fires={layers.includes('fire') ? visibleFires(fires, t) : []}
           iss={iss}
           orbit={orbit}
           issStale={issStale}

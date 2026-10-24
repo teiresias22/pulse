@@ -12,7 +12,7 @@ test('왕복: 인코딩한 값을 그대로 되읽는다', () => {
 });
 
 test('빈 해시 → 라이브 + 전체 레이어', () => {
-  assert.deepEqual(decodeHash(''), { t: null, layers: ['quake', 'launch', 'iss'] });
+  assert.deepEqual(decodeHash(''), { t: null, layers: ['quake', 'storm', 'fire', 'launch', 'iss'] });
 });
 
 test('잘못된 t는 라이브, 모르는 레이어는 버리고 순서는 정해진 순서로', () => {

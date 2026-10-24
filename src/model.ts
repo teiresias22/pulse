@@ -17,8 +17,8 @@ export type PulseEvent = {
 export type StormFix = { time: number; lat: number; lng: number; kts: number };
 export type Storm = { id: string; name: string; track: StormFix[]; closed: number | null; url: string };
 
-export type LayerKey = 'quake' | 'launch' | 'iss';
-export const LAYERS: LayerKey[] = ['quake', 'launch', 'iss'];
+export type LayerKey = 'quake' | 'storm' | 'fire' | 'launch' | 'iss';
+export const LAYERS: LayerKey[] = ['quake', 'storm', 'fire', 'launch', 'iss'];
 
 export const MINUTE = 60_000;
 export const HOUR = 60 * MINUTE;

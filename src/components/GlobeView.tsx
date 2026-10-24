@@ -1,9 +1,10 @@
 import { useEffect, useRef } from 'react';
 import Globe, { type GlobeInstance } from 'globe.gl';
 import type { IssPos } from '../sources/iss.ts';
-import type { PulseEvent, Selection } from '../model.ts';
+import type { PulseEvent, Selection, Storm } from '../model.ts';
 import { activeRings, quakeOpacity, ringProgress } from '../lib/timeline.ts';
-import { ISS_COLOR, LAUNCH_COLOR, quakeColor, quakeRadius, RING_RGB } from '../lib/style.ts';
+import { FIRE_COLOR, fireRadius, ISS_COLOR, ISS_PATH_COLOR, LAUNCH_COLOR, quakeColor, quakeRadius, RING_RGB, STORM_PATH_COLOR } from '../lib/style.ts';
+import { stormAt, stormCategory, trackUntil, type StormCategory } from '../lib/storm.ts';
 import { msg } from '../i18n.ts';
 import { MeshBasicMaterial, TextureLoader, type ShaderMaterial } from 'three';
 import { antipode, subsolarPoint, type GeoPoint } from '../lib/sun.ts';
@@ -14,6 +15,8 @@ export type GlobeProps = {
   t: number;
   quakes: PulseEvent[];
   launches: PulseEvent[];
+  storms: Storm[];
+  fires: PulseEvent[];
   iss: IssPos | null;
   orbit: IssPos[];
   issStale: boolean;
@@ -23,10 +26,16 @@ export type GlobeProps = {
   onUserInteract: () => void;
 };
 
-type Marker = { lat: number; lng: number; alt: number; launch?: PulseEvent; iss?: true };
+type Marker = { lat: number; lng: number; alt: number; launch?: PulseEvent; iss?: true; storm?: Storm; cat?: StormCategory; el?: HTMLElement };
+// 경로 레이어(ISS 궤도 + 태풍 경로). altKm이 없는 점은 태풍 경로(지표 바로 위)
+type PathPoint = { lat: number; lng: number; altKm?: number };
+type Path = { points: PathPoint[]; color: string; dashed: boolean };
 
 const EARTH_KM = 6371;
 const LAUNCH_ALT = 0.12;
+const FIRE_ALT = 0.04;
+const STORM_ALT = 0.02;
+const STORM_PATH_ALT = 0.006;
 const SYMBOL = { success: '▲', failure: '✕', upcoming: '◇' } as const;
 // 가까이 확대했을 때만 쓰는 NASA GIBS 블루 마블 타일(키 없음, CORS *)
 type TileUrl = (x: number, y: number, level: number) => string;
@@ -47,7 +56,7 @@ export function GlobeView(props: GlobeProps) {
   const issMarker = useRef<Marker>({ lat: 0, lng: 0, alt: 0, iss: true });
   // 궤도선 데이터도 같은 객체를 고쳐 쓴다. 새 객체를 넘기면 three-globe가 선과 LineMaterial을 버려
   // t가 바뀔 때마다 셰이더를 다시 컴파일했다(재생 중 초당 수 회)
-  const orbitPath = useRef<{ points: IssPos[] }>({ points: [] });
+  const orbitPath = useRef<Path>({ points: [], color: ISS_PATH_COLOR, dashed: false });
   const dayNight = useRef<ShaderMaterial | null>(null);
   const mode = useRef<GlobeMode>('shader');
   const nightTile = useRef<GeoPoint>(antipode(subsolarPoint(props.t)));
@@ -71,14 +80,19 @@ export function GlobeView(props: GlobeProps) {
       .pointLat('lat')
       .pointLng('lng')
       .pointsTransitionDuration(0)
-      .pointAltitude((d) => ((d as PulseEvent).kind === 'launch' ? LAUNCH_ALT : 0.01))
+      .pointAltitude((d) => {
+        const e = d as PulseEvent;
+        return e.kind === 'launch' ? LAUNCH_ALT : e.kind === 'fire' ? FIRE_ALT : 0.01;
+      })
       .pointRadius((d) => {
         const e = d as PulseEvent;
-        return e.kind === 'launch' ? 0.12 : quakeRadius(e.magnitude ?? 0);
+        if (e.kind === 'launch') return 0.12;
+        return e.kind === 'fire' ? fireRadius(e.magnitude ?? 0) : quakeRadius(e.magnitude ?? 0);
       })
       .pointColor((d) => {
         const e = d as PulseEvent;
-        return e.kind === 'launch' ? LAUNCH_COLOR : quakeColor(e.magnitude ?? 0, quakeOpacity(e, latest.current.t));
+        if (e.kind === 'launch') return LAUNCH_COLOR;
+        return e.kind === 'fire' ? FIRE_COLOR : quakeColor(e.magnitude ?? 0, quakeOpacity(e, latest.current.t));
       })
       .onPointClick((d) => latest.current.onSelect({ kind: 'event', event: d as PulseEvent }))
       .ringLat('lat')
@@ -99,8 +113,13 @@ export function GlobeView(props: GlobeProps) {
       .pathPoints('points')
       .pathPointLat('lat')
       .pathPointLng('lng')
-      .pathPointAlt((p) => (p as IssPos).altKm / EARTH_KM)
-      .pathColor(() => 'rgba(245, 247, 255, 0.55)')
+      .pathPointAlt((p) => {
+        const km = (p as PathPoint).altKm;
+        return km === undefined ? STORM_PATH_ALT : km / EARTH_KM;
+      })
+      .pathColor((d: object) => (d as Path).color)
+      .pathDashLength((d) => ((d as Path).dashed ? 0.02 : 1))
+      .pathDashGap((d) => ((d as Path).dashed ? 0.015 : 0))
       .pathStroke(1.2)
       .pathTransitionDuration(0)
       .tileLat('lat')
@@ -170,6 +189,11 @@ export function GlobeView(props: GlobeProps) {
           ev.stopPropagation();
           latest.current.onSelect({ kind: 'event', event: launch });
         };
+      } else if (d.storm) {
+        b.className = `marker storm-${d.cat}`;
+        b.textContent = '🌀';
+        b.setAttribute('aria-label', `${msg.layer.storm} · ${d.storm.name}`);
+        d.el = b; // 등급이 바뀌면 effect가 className만 고친다
       }
       return b;
     }
@@ -211,12 +235,12 @@ export function GlobeView(props: GlobeProps) {
     };
   }, []);
 
-  const { t, quakes, launches, iss, orbit, issStale, reducedMotion, follow } = props;
+  const { t, quakes, launches, storms, fires, iss, orbit, issStale, reducedMotion, follow } = props;
 
-  // 점: 지진 + 발사 기둥. 같은 객체를 넘기므로 globe.gl이 메시를 재사용하고 색만 다시 계산한다
+  // 점: 지진 + 산불 기둥 + 발사 기둥. 같은 객체를 넘기므로 globe.gl이 메시를 재사용하고 색만 다시 계산한다
   useEffect(() => {
-    globe.current?.pointsData([...quakes, ...launches]);
-  }, [t, quakes, launches]);
+    globe.current?.pointsData([...quakes, ...fires, ...launches]);
+  }, [t, quakes, fires, launches]);
 
   // 스크러버 시각의 태양 위치로 셰이더 밤낮 경계와 타일 모드의 밤 반구를 옮긴다
   useEffect(() => {
@@ -233,6 +257,8 @@ export function GlobeView(props: GlobeProps) {
   // 발사 기호와 ISS 마커. launches 배열은 렌더마다 새로 걸러 오지만 원소(이벤트 객체)는 같으므로,
   // 이벤트 객체별로 마커 객체를 하나씩 기억해 두고 재사용한다(DOM 요소를 1초마다 다시 만들지 않게)
   const markerOf = useRef(new WeakMap<PulseEvent, Marker>());
+  // 태풍 마커는 id로 기억한다(5분마다 다시 읽은 캐시가 새 Storm 객체를 주므로)
+  const stormMarkerOf = useRef(new Map<string, Marker>());
   useEffect(() => {
     const markers = launches.map((e) => {
       let m = markerOf.current.get(e);
@@ -242,18 +268,47 @@ export function GlobeView(props: GlobeProps) {
       }
       return m;
     });
+    for (const s of storms) {
+      const pos = stormAt(s, t);
+      if (!pos) continue;
+      const cat = stormCategory(pos.kts);
+      let m = stormMarkerOf.current.get(s.id);
+      if (!m) {
+        m = { lat: pos.lat, lng: pos.lng, alt: STORM_ALT, storm: s, cat };
+        stormMarkerOf.current.set(s.id, m);
+      }
+      if (m.cat !== cat && m.el) m.el.className = `marker storm-${cat}`;
+      Object.assign(m, { lat: pos.lat, lng: pos.lng, storm: s, cat });
+      markers.push(m);
+    }
     const m = issMarker.current;
     if (iss) Object.assign(m, { lat: iss.lat, lng: iss.lng, alt: iss.altKm / EARTH_KM });
     globe.current?.htmlElementsData(iss ? [...markers, m] : markers);
-  }, [launches, iss]);
+  }, [launches, storms, t, iss]);
 
+  // 태풍 경로 객체도 id별로 재사용한다(새 객체 → LineMaterial 재생성 → 셰이더 재컴파일)
+  const stormPathOf = useRef(new Map<string, Path>());
   useEffect(() => {
     const g = globe.current;
     if (!g) return;
-    g.pathDashLength(issStale ? 0.02 : 1).pathDashGap(issStale ? 0.015 : 0);
-    orbitPath.current.points = orbit;
-    g.pathsData(orbit.length ? [orbitPath.current] : []);
-  }, [orbit, issStale]);
+    const paths: Path[] = [];
+    for (const s of storms) {
+      const points = trackUntil(s, t);
+      if (points.length < 2) continue;
+      let p = stormPathOf.current.get(s.id);
+      if (!p) {
+        p = { points, color: STORM_PATH_COLOR, dashed: false };
+        stormPathOf.current.set(s.id, p);
+      }
+      p.points = points;
+      paths.push(p);
+    }
+    const o = orbitPath.current;
+    o.points = orbit;
+    o.dashed = issStale;
+    if (orbit.length) paths.push(o);
+    g.pathsData(paths);
+  }, [orbit, issStale, storms, t]);
 
   useEffect(() => {
     if (follow && iss) globe.current?.pointOfView({ lat: iss.lat, lng: iss.lng, altitude: 1.8 }, 0);
