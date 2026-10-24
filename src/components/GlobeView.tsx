@@ -193,6 +193,10 @@ export function GlobeView(props: GlobeProps) {
         b.className = `marker storm-${d.cat}`;
         b.textContent = '🌀';
         b.setAttribute('aria-label', `${msg.layer.storm} · ${d.storm.name}`);
+        b.onclick = (ev) => {
+          ev.stopPropagation();
+          if (d.storm) latest.current.onSelect({ kind: 'storm', storm: d.storm });
+        };
         d.el = b; // 등급이 바뀌면 effect가 className만 고친다
       }
       return b;

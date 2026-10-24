@@ -28,7 +28,7 @@ export const SPEEDS = [HOUR, 6 * HOUR, DAY];
 // stale = 새로 받지 못해 예전 캐시를 돌려준 경우
 export type Loaded<T> = { value: T; fetchedAt: number; stale: boolean };
 
-export type Selection = { kind: 'event'; event: PulseEvent } | { kind: 'iss' };
+export type Selection = { kind: 'event'; event: PulseEvent } | { kind: 'iss' } | { kind: 'storm'; storm: Storm };
 
 export type LayerStatus = { state: 'loading' | 'ok' | 'error'; fetchedAt?: number; stale?: boolean };
 

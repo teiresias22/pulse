@@ -24,6 +24,7 @@ const webgl = hasWebGL();
 // 출처 하나에 로더 하나. 라이브 모드에서 5분마다 전부 부르고, 실제로 받을지는 출처별 캐시가 정한다
 // (지진 1분 · 태풍·산불 30분 · 발사 1시간 · ISS 1일). 발사가 한도 초과로 막혀 있으면 로더가 네트워크 없이 옛 캐시를 돌려준다
 const SOURCES: LayerKey[] = ['quake', 'launch', 'storm', 'iss']; // fire는 storm과 같은 EONET 요청
+const layerOf = (s: Selection): LayerKey => (s.kind === 'event' ? s.event.kind : s.kind);
 
 export default function App() {
   const [initial] = useState(() => decodeHash(window.location.hash));
@@ -195,7 +196,7 @@ export default function App() {
   const issStale = tle ? isTleStale(tle, t) : false;
   const toggleLayer = (k: LayerKey) => {
     // 끄는 레이어의 카드가 열려 있으면 닫고 따라가기도 멈춘다
-    const open = selected && (selected.kind === 'iss' ? 'iss' : selected.event.kind);
+    const open = selected && layerOf(selected);
     if (open === k && layers.includes(k)) {
       setSelected(null);
       setFollow(false);
@@ -205,7 +206,7 @@ export default function App() {
   };
   const select = (s: Selection) => {
     setSelected(s);
-    track('select_content', { content_type: s.kind === 'iss' ? 'iss' : s.event.kind });
+    track('select_content', { content_type: layerOf(s) });
   };
   const followIss = (f: boolean) => {
     setFollow(f);

@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react';
 import type { IssPos } from '../sources/iss.ts';
 import type { Selection } from '../model.ts';
-import { fmtCountdown, fmtTime, msg } from '../i18n.ts';
+import { fmtCountdown, fmtTime, lang, msg } from '../i18n.ts';
+import { stormAt, stormCategory } from '../lib/storm.ts';
 
 type Props = {
   selection: Selection;
@@ -15,7 +16,8 @@ type Props = {
 
 export function EventCard(p: Props) {
   const ref = useRef<HTMLElement>(null);
-  const id = p.selection.kind === 'iss' ? 'iss' : p.selection.event.id;
+  const s = p.selection;
+  const id = s.kind === 'iss' ? 'iss' : s.kind === 'storm' ? s.storm.id : s.event.id;
   useEffect(() => {
     ref.current?.focus();
   }, [id]);
@@ -24,7 +26,7 @@ export function EventCard(p: Props) {
       <button type="button" className="card-close btn btn-small" onClick={p.onClose} aria-label={msg.close}>
         ✕
       </button>
-      {p.selection.kind === 'iss' ? <IssBody {...p} /> : <EventBody {...p} />}
+      {s.kind === 'iss' ? <IssBody {...p} /> : s.kind === 'storm' ? <StormBody {...p} /> : <EventBody {...p} />}
     </aside>
   );
 }
@@ -51,12 +53,46 @@ function IssBody({ iss, issStale, follow, onFollow }: Props) {
   );
 }
 
+function StormBody({ selection, t }: Props) {
+  if (selection.kind !== 'storm') return null;
+  const s = selection.storm;
+  const pos = stormAt(s, t);
+  const last = s.track.at(-1);
+  return (
+    <>
+      <h2>{msg.layer.storm}</h2>
+      <p className="card-label">{s.name}</p>
+      {pos ? (
+        <dl className="num">
+          <dt>{msg.wind}</dt>
+          <dd>{Math.round(pos.kts)} kt · {Math.round(pos.kts * 1.852)} km/h</dd>
+          <dt>{msg.category}</dt>
+          <dd>{msg.stormCat[stormCategory(pos.kts)]}</dd>
+          {last && (
+            <>
+              <dt>{msg.lastFix}</dt>
+              <dd>{fmtTime(last.time)}</dd>
+            </>
+          )}
+        </dl>
+      ) : (
+        <p>{msg.stormInactive}</p>
+      )}
+      {s.url && (
+        <a className="btn" href={s.url} target="_blank" rel="noreferrer">
+          {msg.source} ↗
+        </a>
+      )}
+    </>
+  );
+}
+
 function EventBody({ selection, t }: Props) {
   if (selection.kind !== 'event') return null;
   const e = selection.event;
   return (
     <>
-      <h2>{e.kind === 'quake' ? msg.layer.quake : msg.layer.launch}</h2>
+      <h2>{msg.layer[e.kind]}</h2>
       <p className="card-label">{e.label}</p>
       <dl className="num">
         <dt>{fmtTime(e.time)}</dt>
@@ -71,6 +107,20 @@ function EventBody({ selection, t }: Props) {
           <>
             <dt>{msg.status[e.status]}</dt>
             <dd>{e.status === 'upcoming' ? fmtCountdown(e.time, t) : ''}</dd>
+          </>
+        )}
+        {e.kind === 'fire' && (
+          <>
+            {e.magnitude !== undefined && (
+              <>
+                <dt>{msg.area}</dt>
+                <dd>
+                  {Math.round(e.magnitude).toLocaleString(lang)} ac · {Math.round(e.magnitude * 0.4047).toLocaleString(lang)} ha
+                </dd>
+              </>
+            )}
+            <dt>{e.endTime === undefined ? msg.ongoing : msg.contained}</dt>
+            <dd>{e.endTime === undefined ? '' : fmtTime(e.endTime)}</dd>
           </>
         )}
       </dl>
