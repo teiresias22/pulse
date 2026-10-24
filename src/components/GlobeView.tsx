@@ -139,6 +139,10 @@ export function GlobeView(props: GlobeProps) {
       .polygonStrokeColor(() => TORNADO_STROKE)
       .polygonAltitude(0.008)
       .polygonsTransitionDuration(0)
+      .onPolygonClick((d) => latest.current.onSelect({ kind: 'tornado', tornado: d as TornadoWarning }))
+      .onPathClick((d) => {
+        if ((d as Path).aurora) latest.current.onSelect({ kind: 'aurora' });
+      })
       .tileLat('lat')
       .tileLng('lng')
       .tileAltitude(0.004)
@@ -219,6 +223,10 @@ export function GlobeView(props: GlobeProps) {
         b.className = 'marker marker-tornado';
         b.textContent = '🌪';
         b.setAttribute('aria-label', `${msg.layer.tornado} · ${d.tornado.area}`);
+        b.onclick = (ev) => {
+          ev.stopPropagation();
+          if (d.tornado) latest.current.onSelect({ kind: 'tornado', tornado: d.tornado });
+        };
       }
       return b;
     }

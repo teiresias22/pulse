@@ -274,6 +274,7 @@ export default function App() {
           t={t}
           iss={iss}
           issStale={issStale}
+          kp={kpNow}
           follow={follow}
           onFollow={followIss}
           onClose={() => {
