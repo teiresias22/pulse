@@ -64,7 +64,7 @@ export function Header(p: Props) {
                 <span className="toggle-label"> {msg.layer[k]}</span>
                 {s.state === 'error' && <span className="warn" aria-hidden="true"> ⚠</span>}
               </button>
-              {s.state === 'error' && (
+              {(s.state === 'error' || (s.state === 'ok' && s.stale)) && (
                 <button type="button" className="btn btn-small" onClick={() => p.onRetry(k)}>
                   {msg.retry}
                 </button>

@@ -20,6 +20,10 @@ const GlobeView = lazy(() => import('./components/GlobeView.tsx').then((m) => ({
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const webgl = hasWebGL();
 
+// 출처 하나에 로더 하나. 라이브 모드에서 5분마다 전부 부르고, 실제로 받을지는 출처별 캐시가 정한다
+// (지진 1분 · 발사 1시간 · ISS 1일). 발사가 한도 초과로 막혀 있으면 로더가 네트워크 없이 옛 캐시를 돌려준다
+const SOURCES: LayerKey[] = ['quake', 'launch', 'iss'];
+
 export default function App() {
   const [initial] = useState(() => decodeHash(window.location.hash));
   const [anchor] = useState(() => Date.now()); // 스크러버 범위 기준(페이지를 연 시각)
@@ -65,9 +69,7 @@ export default function App() {
   useEffect(() => {
     // 마운트 시 한 번 외부 데이터를 가져온다(loading 상태 갱신은 load 안에서)
     /* oxlint-disable react/set-state-in-effect */
-    void load('quake');
-    void load('launch');
-    void load('iss');
+    for (const k of SOURCES) void load(k);
     /* oxlint-enable react/set-state-in-effect */
   }, [load]);
 
@@ -78,11 +80,11 @@ export default function App() {
     return () => window.clearInterval(id);
   }, [live]);
 
-  // 라이브: 5분마다 지진 갱신. 탭이 숨겨져 있으면 건너뛰고, 돌아오면 바로 한 번
+  // 라이브: 5분마다 모든 출처를 다시 부른다. 탭이 숨겨져 있으면 건너뛰고, 돌아오면 바로 한 번
   useEffect(() => {
     if (!live) return;
     const tick = () => {
-      if (document.visibilityState === 'visible') void load('quake');
+      if (document.visibilityState === 'visible') for (const k of SOURCES) void load(k);
     };
     const id = window.setInterval(tick, 5 * MINUTE);
     document.addEventListener('visibilitychange', tick);
