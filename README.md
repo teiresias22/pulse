@@ -30,8 +30,9 @@ npm run check   # node --test 'src/**/*.check.mjs' — 실제 응답을 자른 f
 npm run lint && npm run build
 ```
 
-`earth-night.webp` — NASA Earth Observatory "Earth at Night" (public domain), via three-globe example images
-`night-sky.webp` — from [three-globe](https://github.com/vasturiano/three-globe) example images (MIT License)
+`earth-day.webp` — NASA "Blue Marble" (public domain), via three-globe example images
+`earth-night.webp` — NASA Earth Observatory "Earth at Night" / Black Marble (public domain), via three-globe example images
+`night-sky.webp` — from [three-globe](https://github.com/vasturiano/three-globe) example images (MIT License). 확대 시 위성 타일은 [NASA GIBS](https://www.earthdata.nasa.gov/engage/open-data-services-software/earthdata-developer-portal/gibs-api) BlueMarble_ShadedRelief_Bathymetry(키 없음).
 
 ## 분석
 
