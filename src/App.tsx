@@ -52,12 +52,18 @@ export default function App() {
   const [follow, setFollow] = useState(false);
   const [selected, setSelected] = useState<Selection | null>(null);
 
+  // 출처별 마지막으로 반영한 fetchedAt. 5분 틱이 같은 캐시를 다시 읽으면 새 객체로 바꾸지 않는다
+  // (바꾸면 발사 마커·산불 기둥·ISS 궤도 계산기가 값은 같은데 매번 다시 만들어진다)
+  const applied = useRef<Partial<Record<LayerKey, number>>>({});
   const run = useCallback(async <T,>(keys: LayerKey[], loader: () => Promise<Loaded<T>>, apply: (v: T) => void) => {
     const set = (st: LayerStatus) => setStatus((s) => ({ ...s, ...Object.fromEntries(keys.map((k) => [k, st])) }));
     set({ state: 'loading' });
     try {
       const r = await loader();
-      apply(r.value);
+      if (applied.current[keys[0]] !== r.fetchedAt) {
+        applied.current[keys[0]] = r.fetchedAt;
+        apply(r.value);
+      }
       set({ state: 'ok', fetchedAt: r.fetchedAt, stale: r.stale });
     } catch {
       set({ state: 'error' });
@@ -247,7 +253,12 @@ export default function App() {
       <Legend />
       {selected && (
         <EventCard
-          selection={selected}
+          selection={
+            // 태풍 카드는 30분마다 새로 받은 경로로 보인다(지도 마커와 같은 값)
+            selected.kind === 'storm'
+              ? { kind: 'storm', storm: storms.find((s) => s.id === selected.storm.id) ?? selected.storm }
+              : selected
+          }
           t={t}
           iss={iss}
           issStale={issStale}
