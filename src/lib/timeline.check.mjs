@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  activeRings, quakeOpacity, ringProgress, RING_MS, timeRange, visibleFires, visibleLaunches, visibleQuakes, WINDOW_MS,
+  activeRings, quakeOpacity, ringProgress, RING_MS, timeRange, visibleFires, visibleLaunches, visibleQuakes, visibleTornadoes, WINDOW_MS,
 } from './timeline.ts';
 
 const H = 3_600_000;
@@ -51,4 +51,10 @@ test('visibleFires: 시작 뒤부터 진화 전까지, 진화 시각이 없으�
   const f = (id, time, endTime) => ({ id, kind: 'fire', time, ...(endTime === undefined ? {} : { endTime }), lat: 0, lng: 0, label: id, url: '' });
   const fires = [f('future', T + H), f('open', T - H), f('out', T - 2 * H, T - H), f('burning', T - 2 * H, T + H)];
   assert.deepEqual(visibleFires([...fires, q('q', T - H)], T).map((e) => e.id), ['open', 'burning']);
+});
+
+test('visibleTornadoes: start ≤ t < end', () => {
+  const w = (id, start, end) => ({ id, start, end, area: '', headline: '', geometry: { type: 'Polygon', coordinates: [] } });
+  const ws = [w('on', T, T + H), w('before', T + 1, T + H), w('ended', T - H, T)];
+  assert.deepEqual(visibleTornadoes(ws, T).map((x) => x.id), ['on']);
 });

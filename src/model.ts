@@ -27,6 +27,9 @@ export type TornadoWarning = {
   geometry: { type: 'Polygon'; coordinates: number[][][] };
 };
 
+// NOAA 행성 Kp 지수(3시간 구간의 시작 시각). kind: 관측 · 추정(관측 대기) · 예보
+export type KpPoint = { time: number; kp: number; kind: 'observed' | 'estimated' | 'predicted' };
+
 export type LayerKey = 'quake' | 'storm' | 'fire' | 'launch' | 'iss';
 export const LAYERS: LayerKey[] = ['quake', 'storm', 'fire', 'launch', 'iss'];
 

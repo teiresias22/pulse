@@ -1,4 +1,4 @@
-import { DAY, HOUR, type PulseEvent } from '../model.ts';
+import { DAY, HOUR, type PulseEvent, type TornadoWarning } from '../model.ts';
 
 export const WINDOW_MS = 7 * DAY;
 export const RING_MS = 3 * HOUR;
@@ -17,6 +17,10 @@ export function visibleLaunches(events: PulseEvent[], t: number): PulseEvent[] {
 
 export function visibleFires(events: PulseEvent[], t: number): PulseEvent[] {
   return events.filter((e) => e.kind === 'fire' && e.time <= t && (e.endTime === undefined || t < e.endTime));
+}
+
+export function visibleTornadoes(ws: TornadoWarning[], t: number): TornadoWarning[] {
+  return ws.filter((w) => w.start <= t && t < w.end);
 }
 
 export function quakeOpacity(e: PulseEvent, t: number): number {

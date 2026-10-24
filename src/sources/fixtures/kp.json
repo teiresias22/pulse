@@ -1,0 +1,9 @@
+[
+  { "time_tag": "2026-10-24T03:00:00", "kp": 1.67, "observed": "estimated", "noaa_scale": null },
+  { "time_tag": "2026-10-17T00:00:00", "kp": 2.0, "observed": "observed", "noaa_scale": null },
+  { "time_tag": "2026-10-24T00:00:00", "kp": 5.33, "observed": "observed", "noaa_scale": "G1" },
+  { "time_tag": "2026-10-26T00:00:00", "kp": 3.0, "observed": "predicted", "noaa_scale": null },
+  { "time_tag": "bad", "kp": 1.0, "observed": "observed", "noaa_scale": null },
+  { "time_tag": "2026-10-25T00:00:00", "kp": null, "observed": "predicted", "noaa_scale": null },
+  { "time_tag": "2026-10-25T03:00:00", "kp": 2.0, "observed": "weird", "noaa_scale": null }
+]
