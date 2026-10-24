@@ -1,9 +1,9 @@
 # Pulse
 
-지난 7일간 지구에서 일어난 지진·로켓 발사·ISS 궤도를 3D 지구본 위에서 되감아 보는 웹 페이지.
+지난 7일간 지구에서 일어난 지진·태풍·산불·로켓 발사·ISS 궤도를 3D 지구본 위에서 되감아 보는 웹 페이지.
 
 - 사이트: https://pulse.joon.is-a.dev
-- 서버 없음. 브라우저가 키 없는 공개 API 세 개를 직접 부른다.
+- 서버 없음. 브라우저가 키 없는 공개 API 네 개를 직접 부른다.
 
 ## 데이터
 
@@ -11,9 +11,12 @@
 |---|---|---|
 | 지진 | [USGS Earthquake Hazards Program](https://earthquake.usgs.gov/earthquakes/feed/v1.0/geojson.php) — 지난 7일 전체 | 60초 |
 | 발사 | [Launch Library 2](https://thespacedevs.com/llapi) — 지난 7일 + 앞으로 7일 | 1시간(익명 한도 IP당 시간당 15회) |
+| 태풍·산불 | [NASA EONET](https://eonet.gsfc.nasa.gov/docs/v3) — 지난 7일(끝난 이벤트 포함). 태풍은 6시간 간격 관측점을 보간, 예보 경로는 없음 | 30분 |
 | ISS | [Where the ISS at?](https://wheretheiss.at/w/developer) TLE → [satellite.js](https://github.com/shashwatak/satellite-js)로 브라우저에서 위치 계산 | 1일 |
 
 ISS 위치는 주기적으로 묻지 않는다. 하루 한 번 받은 궤도 요소(TLE)로 아무 시각의 위치나 계산하므로 스크러버로 되감을 수 있다.
+
+라이브 모드에서는 5분마다 모든 출처를 다시 부르고, 실제 요청 여부는 위 캐시 시간이 정한다.
 
 ## 구조
 
