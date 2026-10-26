@@ -26,4 +26,24 @@ export function initAnalytics(): void {
 
 export function track(name: string, params?: Record<string, string | number | boolean>): void {
   window.gtag?.('event', name, params);
+  ph?.capture(name, params);
+}
+
+// PostHog(인디 앱 공용 프로젝트). 키(VITE_POSTHOG_KEY)가 없으면 아무것도 불러오지 않는다 — GA4와 같은 규칙
+const PH_KEY = import.meta.env.VITE_POSTHOG_KEY as string | undefined;
+let ph: import('posthog-js').PostHog | undefined;
+
+export function initPosthog(): void {
+  if (!PH_KEY || !/^phc_\w+$/.test(PH_KEY)) return;
+  import('posthog-js').then(({ default: posthog }) => {
+    posthog.init(PH_KEY, {
+      api_host: 'https://us.i.posthog.com',
+      autocapture: false,
+      capture_pageview: 'history_change',
+      capture_pageleave: false,
+      disable_session_recording: true,
+    });
+    posthog.register({ app: 'pulse', environment: import.meta.env.DEV ? 'staging' : 'production' });
+    ph = posthog;
+  });
 }
