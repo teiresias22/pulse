@@ -14,6 +14,7 @@ export function decodeHash(hash: string): ViewState {
   const rawT = p.get('t');
   const t = rawT && Number.isFinite(Number(rawT)) ? Number(rawT) : null;
   const raw = p.get('layers');
-  const picked = raw === null ? LAYERS : raw.split(',');
+  // 옛 공유 링크의 iss(ISS 하나) → sat(위성 레이어)
+  const picked = raw === null ? LAYERS : raw.split(',').map((l) => (l === 'iss' ? 'sat' : l));
   return { t, layers: LAYERS.filter((l) => picked.includes(l)) };
 }

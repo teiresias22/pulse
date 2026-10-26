@@ -1,18 +1,18 @@
 import { useEffect, useRef } from 'react';
 import Globe, { type GlobeInstance } from 'globe.gl';
-import type { IssPos } from '../sources/iss.ts';
-import type { KpPoint, Port, PulseEvent, Selection, Storm, TornadoWarning } from '../model.ts';
-import { portRatio, portTrend, type PortTrend } from '../lib/ports.ts';
+import type { KpPoint, PulseEvent, Sat, SatPos, Selection, Storm, TornadoWarning } from '../model.ts';
+import type { SatOnGlobe, SatOrbit } from '../lib/satellites.ts';
+import { ANIMAL_ICON, animalOpacity, type AnimalCluster } from '../lib/animals.ts';
 import { activeRings, quakeOpacity, ringProgress, visibleTornadoes } from '../lib/timeline.ts';
 import {
-  AURORA_EQ_COLOR, AURORA_POLE_COLOR, FIRE_COLOR, fireRadius, ISS_COLOR, ISS_PATH_COLOR, LAUNCH_COLOR, PORT_COLOR, quakeColor, quakeRadius,
+  AURORA_EQ_COLOR, AURORA_POLE_COLOR, FIRE_COLOR, fireRadius, ISS_COLOR, ISS_PATH_COLOR, LAUNCH_COLOR, quakeColor, quakeRadius,
   RING_RGB, STORM_PATH_COLOR, TORNADO_FILL, TORNADO_STROKE,
 } from '../lib/style.ts';
 import { auroraRings, GEOMAG_NORTH, GEOMAG_SOUTH, ovalLatitude, ring } from '../lib/aurora.ts';
 import { tornadoCenter } from '../sources/nws.ts';
 import { stormAt, stormCategory, trackUntil, type StormCategory } from '../lib/storm.ts';
 import { msg } from '../i18n.ts';
-import { Mesh, MeshBasicMaterial, SphereGeometry, TextureLoader, type ShaderMaterial } from 'three';
+import { MeshBasicMaterial, TextureLoader, type ShaderMaterial } from 'three';
 import { antipode, subsolarPoint, type GeoPoint } from '../lib/sun.ts';
 import { nextMode, type GlobeMode } from '../lib/globeMode.ts';
 import { createDayNightMaterial, setSunDirection } from '../lib/dayNightMaterial.ts';
@@ -25,10 +25,10 @@ export type GlobeProps = {
   fires: PulseEvent[];
   tornadoes: TornadoWarning[];
   kp: KpPoint | null;
-  ports: Port[];
-  iss: IssPos | null;
-  orbit: IssPos[];
-  issStale: boolean;
+  animals: AnimalCluster[]; // 보이는 동물 관찰을 칸·묶음별로 묶은 것
+  sats: SatOnGlobe[]; // 보이는 위성(도킹 중 제외)과 t의 위치
+  orbits: SatOrbit[]; // 정거장 + 선택한 위성의 궤도선
+  followPos: SatPos | null; // 따라가는 위성의 위치
   reducedMotion: boolean;
   follow: boolean;
   onSelect: (s: Selection) => void;
@@ -37,9 +37,9 @@ export type GlobeProps = {
 
 type Marker = {
   lat: number; lng: number; alt: number;
-  launch?: PulseEvent; iss?: true; storm?: Storm; cat?: StormCategory; tornado?: TornadoWarning; aurora?: true; el?: HTMLElement;
+  launch?: PulseEvent; sat?: Sat; storm?: Storm; cat?: StormCategory; tornado?: TornadoWarning; aurora?: true; cluster?: AnimalCluster; el?: HTMLElement;
 };
-// 경로 레이어(ISS 궤도 + 태풍 경로 + 오로라 띠). altKm이 없는 점은 지표 바로 위
+// 경로 레이어(위성 궤도 + 태풍 경로 + 오로라 띠). altKm이 없는 점은 지표 바로 위
 type PathPoint = { lat: number; lng: number; altKm?: number };
 type Path = { points: PathPoint[]; color: string; dashed: boolean; aurora?: true };
 
@@ -56,15 +56,30 @@ const GIBS_TILE: TileUrl = (x, y, level) =>
   `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlueMarble_ShadedRelief_Bathymetry/default/2004-08/GoogleMapsCompatible_Level8/${level}/${y}/${x}.jpeg`;
 // 타일 모드의 밤: 조명을 돌리면 지진 점까지 어두워지므로 반투명 반구를 덮는다
 const NIGHT_MATERIAL = new MeshBasicMaterial({ color: '#000000', transparent: true, opacity: 0.55, depthWrite: false });
-// 항만 점: 모양 2개·재질 5개를 모든 점이 같이 쓴다(점마다 새 재질 → 셰이더 재컴파일)
-// three-globe의 deallocate()가 objectsData가 바뀔 때(레이어 토글·데이터 갱신) 이들을 dispose한다 — three.js가 다시 올리므로
-// 그때 한 번 재연결될 뿐, 재생 중에는 일어나지 않는다
-const PORT_GEOM = new SphereGeometry(0.35, 8, 6);
-const CHOKE_GEOM = new SphereGeometry(0.7, 12, 8);
-const PORT_MATERIAL = Object.fromEntries(
-  Object.entries(PORT_COLOR).map(([k, color]) => [k, new MeshBasicMaterial({ color })]),
-) as Record<PortTrend, MeshBasicMaterial>;
-const PORT_ALT = 0.008; // 타일 모드 밤 덮개(0.004)보다 위 — 해협 구(반지름 0.7)가 표면 아래로 파묻히지 않게
+const ANIMAL_ALT = 0.01;
+
+// 동물 마커: 이모지 + 개수(2 이상). t가 바뀔 때마다 부르지만 개수·투명도가 같으면 DOM을 건드리지 않는다
+function paintAnimal(el: HTMLElement, c: AnimalCluster, t: number) {
+  const n = c.items.length;
+  const first = c.items[0];
+  const opacity = first ? animalOpacity(first, t).toFixed(2) : '1';
+  // 개수가 바뀔 때만 내용을 다시 만들고, 투명도는 문자열이 바뀔 때만 쓴다(틱마다 마커 ~200개)
+  if (el.dataset.n !== String(n)) {
+    el.dataset.n = String(n);
+    el.textContent = ANIMAL_ICON[c.group];
+    if (n > 1) {
+      const s = document.createElement('span');
+      s.className = 'marker-count';
+      s.textContent = String(n);
+      el.append(s);
+    }
+    el.setAttribute('aria-label', `${msg.animalGroup[c.group]} · ${msg.animalCount(n)}`);
+  }
+  if (el.dataset.op !== opacity) {
+    el.dataset.op = opacity;
+    el.style.opacity = opacity;
+  }
+}
 
 export function GlobeView(props: GlobeProps) {
   const el = useRef<HTMLDivElement>(null);
@@ -74,11 +89,10 @@ export function GlobeView(props: GlobeProps) {
   useEffect(() => {
     latest.current = props;
   });
-  // ISS 마커 객체를 재사용해야 globe.gl이 DOM 요소를 매번 새로 만들지 않는다
-  const issMarker = useRef<Marker>({ lat: 0, lng: 0, alt: 0, iss: true });
-  // 궤도선 데이터도 같은 객체를 고쳐 쓴다. 새 객체를 넘기면 three-globe가 선과 LineMaterial을 버려
-  // t가 바뀔 때마다 셰이더를 다시 컴파일했다(재생 중 초당 수 회)
-  const orbitPath = useRef<Path>({ points: [], color: ISS_PATH_COLOR, dashed: false });
+  // 위성 마커·궤도선은 위성 id별로 같은 객체를 고쳐 쓴다. 새 객체를 넘기면 globe.gl이 DOM을 다시 만들고,
+  // 궤도선은 three-globe가 선과 LineMaterial을 버려 t가 바뀔 때마다 셰이더를 다시 컴파일했다(9bac3fe)
+  const satMarkerOf = useRef(new Map<number, Marker>());
+  const satPathOf = useRef(new Map<number, Path>());
   const dayNight = useRef<ShaderMaterial | null>(null);
   const mode = useRef<GlobeMode>('shader');
   const nightTile = useRef<GeoPoint>(antipode(subsolarPoint(props.t)));
@@ -170,14 +184,6 @@ export function GlobeView(props: GlobeProps) {
       .tileMaterial(() => NIGHT_MATERIAL)
       .tilesTransitionDuration(0)
       .globeTileEngineMaxLevel(8)
-      .objectLat('lat')
-      .objectLng('lng')
-      .objectAltitude(PORT_ALT)
-      .objectThreeObject((d: object) => {
-        const p = d as Port;
-        return new Mesh(p.kind === 'chokepoint' ? CHOKE_GEOM : PORT_GEOM, PORT_MATERIAL[portTrend(portRatio(p))]);
-      })
-      .onObjectClick((d) => latest.current.onSelect({ kind: 'port', port: d as Port }))
       .onZoom(({ altitude }) => applyMode(nextMode(mode.current, altitude)));
     // 모바일 GPU 부담 상한(PageSpeed 모바일이 시간 초과됐다). globe.gl도 생성 시 2로 묶지만 기본값이 바뀌어도 유지
     g.renderer().setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -218,14 +224,16 @@ export function GlobeView(props: GlobeProps) {
       const b = document.createElement('button');
       b.type = 'button';
       b.style.pointerEvents = 'auto';
-      if (d.iss) {
-        b.className = 'marker marker-iss';
-        b.textContent = '◉';
-        b.style.color = ISS_COLOR;
-        b.setAttribute('aria-label', 'ISS');
+      if (d.sat) {
+        const station = d.sat.kind === 'station';
+        b.className = station ? 'marker marker-iss' : 'marker marker-sat';
+        b.textContent = station ? '◉' : '•';
+        if (station) b.style.color = ISS_COLOR;
+        b.title = d.sat.name;
+        b.setAttribute('aria-label', d.sat.name);
         b.onclick = (ev) => {
           ev.stopPropagation();
-          latest.current.onSelect({ kind: 'iss' });
+          if (d.sat) latest.current.onSelect({ kind: 'sat', id: d.sat.id });
         };
       } else if (d.launch) {
         const launch = d.launch;
@@ -261,6 +269,14 @@ export function GlobeView(props: GlobeProps) {
           ev.stopPropagation();
           latest.current.onSelect({ kind: 'aurora' });
         };
+      } else if (d.cluster) {
+        b.className = 'marker marker-animal';
+        paintAnimal(b, d.cluster, latest.current.t);
+        b.onclick = (ev) => {
+          ev.stopPropagation();
+          if (d.cluster) latest.current.onSelect({ kind: 'animal', key: d.cluster.key });
+        };
+        d.el = b; // 개수·투명도가 바뀌면 effect가 paintAnimal로 고친다
       }
       return b;
     }
@@ -302,12 +318,7 @@ export function GlobeView(props: GlobeProps) {
     };
   }, []);
 
-  const { t, quakes, launches, storms, fires, tornadoes, kp, ports, iss, orbit, issStale, reducedMotion, follow } = props;
-
-  // 항만 점은 t와 무관 — 데이터가 바뀔 때만
-  useEffect(() => {
-    globe.current?.objectsData(ports);
-  }, [ports]);
+  const { t, quakes, launches, storms, fires, tornadoes, kp, animals, sats, orbits, followPos, reducedMotion, follow } = props;
 
   // 점: 지진 + 산불 기둥 + 발사 기둥. 같은 객체를 넘기므로 globe.gl이 메시를 재사용하고 색만 다시 계산한다
   useEffect(() => {
@@ -331,7 +342,7 @@ export function GlobeView(props: GlobeProps) {
     globe.current?.ringsData(reducedMotion ? [] : activeRings(quakes, t));
   }, [t, quakes, reducedMotion]);
 
-  // 발사 기호와 ISS 마커. launches 배열은 렌더마다 새로 걸러 오지만 원소(이벤트 객체)는 같으므로,
+  // 발사 기호와 위성 마커. launches 배열은 렌더마다 새로 걸러 오지만 원소(이벤트 객체)는 같으므로,
   // 이벤트 객체별로 마커 객체를 하나씩 기억해 두고 재사용한다(DOM 요소를 1초마다 다시 만들지 않게)
   const markerOf = useRef(new WeakMap<PulseEvent, Marker>());
   // 태풍 마커는 id로 기억한다(5분마다 다시 읽은 캐시가 새 Storm 객체를 주므로)
@@ -341,6 +352,8 @@ export function GlobeView(props: GlobeProps) {
     { lat: 0, lng: 0, alt: STORM_ALT, aurora: true },
     { lat: 0, lng: 0, alt: STORM_ALT, aurora: true },
   ]);
+  // 동물 마커는 칸 key별로 기억한다(t마다 clusterAnimals가 새 객체를 주므로)
+  const animalMarkerOf = useRef(new Map<string, Marker>());
   useEffect(() => {
     const markers = launches.map((e) => {
       let m = markerOf.current.get(e);
@@ -381,10 +394,27 @@ export function GlobeView(props: GlobeProps) {
         markers.push(north, south);
       }
     }
-    const m = issMarker.current;
-    if (iss) Object.assign(m, { lat: iss.lat, lng: iss.lng, alt: iss.altKm / EARTH_KM });
-    globe.current?.htmlElementsData(iss ? [...markers, m] : markers);
-  }, [launches, storms, tornadoes, kp, t, iss]);
+    for (const c of animals) {
+      let m = animalMarkerOf.current.get(c.key);
+      if (!m) {
+        m = { lat: c.lat, lng: c.lng, alt: ANIMAL_ALT, cluster: c };
+        animalMarkerOf.current.set(c.key, m);
+      }
+      Object.assign(m, { lat: c.lat, lng: c.lng, cluster: c });
+      if (m.el) paintAnimal(m.el, c, t);
+      markers.push(m);
+    }
+    for (const { sat, pos } of sats) {
+      let m = satMarkerOf.current.get(sat.id);
+      if (!m) {
+        m = { lat: 0, lng: 0, alt: 0, sat };
+        satMarkerOf.current.set(sat.id, m);
+      }
+      Object.assign(m, { lat: pos.lat, lng: pos.lng, alt: pos.altKm / EARTH_KM, sat });
+      markers.push(m);
+    }
+    globe.current?.htmlElementsData(markers);
+  }, [launches, storms, tornadoes, kp, t, sats, animals]);
 
   // 태풍 경로 객체도 id별로 재사용한다(새 객체 → LineMaterial 재생성 → 셰이더 재컴파일)
   const stormPathOf = useRef(new Map<string, Path>());
@@ -418,16 +448,22 @@ export function GlobeView(props: GlobeProps) {
       }
       paths.push(...auroraPaths.current);
     }
-    const o = orbitPath.current;
-    o.points = orbit;
-    o.dashed = issStale;
-    if (orbit.length) paths.push(o);
+    for (const o of orbits) {
+      let p = satPathOf.current.get(o.id);
+      if (!p) {
+        p = { points: [], color: ISS_PATH_COLOR, dashed: false };
+        satPathOf.current.set(o.id, p);
+      }
+      p.points = o.points;
+      p.dashed = o.stale;
+      paths.push(p);
+    }
     g.pathsData(paths);
-  }, [orbit, issStale, storms, kp, t]);
+  }, [orbits, storms, kp, t]);
 
   useEffect(() => {
-    if (follow && iss) globe.current?.pointOfView({ lat: iss.lat, lng: iss.lng, altitude: 1.8 }, 0);
-  }, [follow, iss]);
+    if (follow && followPos) globe.current?.pointOfView({ lat: followPos.lat, lng: followPos.lng, altitude: 1.8 }, 0);
+  }, [follow, followPos]);
 
   useEffect(() => {
     const c = globe.current?.controls();

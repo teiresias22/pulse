@@ -1,4 +1,5 @@
-import { DAY, HOUR, isNum, validCoord, type Loaded, type Port, type PortsData } from '../model.ts';
+import { DAY, HOUR, isNum, validCoord, type Animal, type AnimalGroup, type AnimalsData, type Loaded } from '../model.ts';
+import { ANIMAL_GROUPS } from '../lib/animals.ts';
 import { withCache } from '../lib/cache.ts';
 import { fetchJson } from './http.ts';
 
@@ -9,47 +10,43 @@ function dataUrl(path: string): string {
   return `${base}data/${path}`;
 }
 
-const KINDS = ['port', 'chokepoint'] as const;
-const VESSELS = ['container', 'dry_bulk', 'general_cargo', 'roro', 'tanker'] as const;
-
-function isPort(x: unknown): x is Port {
-  const p = x as Partial<Port> | null;
-  return (
-    typeof p?.id === 'string' &&
-    KINDS.includes(p.kind as (typeof KINDS)[number]) &&
-    typeof p.name === 'string' &&
-    typeof p.country === 'string' &&
-    isNum(p.lat) && isNum(p.lng) && validCoord(p.lat, p.lng) &&
-    Array.isArray(p.days) && p.days.length === 7 && p.days.every(isNum) &&
-    isNum(p.base) &&
-    typeof p.byType === 'object' && p.byType !== null && VESSELS.every((k) => isNum(p.byType?.[k]))
-  );
-}
-
 const isDay = (x: unknown): x is string => typeof x === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x);
-
-export function parsePorts(json: unknown): PortsData | null {
-  const j = json as { builtAt?: unknown; through?: Record<string, unknown>; items?: unknown } | null;
-  const through = j?.through;
-  if (!isNum(j?.builtAt) || !isDay(through?.port) || !isDay(through?.chokepoint) || !Array.isArray(j.items)) {
-    return null;
-  }
-  return { builtAt: j.builtAt, through: { port: through.port as string, chokepoint: through.chokepoint as string }, items: (j.items as unknown[]).filter(isPort) };
-}
 
 // 하루 한 번 도는 수집기가 멈추면 6시간 캐시는 계속 '신선'해 보인다 — 만든 지 3일이 넘으면 헤더의 '오래된 데이터' 표시를 띄운다
 // fetchedAt도 builtAt으로 둔다: 같은 파일을 다시 읽어도 값이 같아 App의 applied 가드가 재적용을 막고, 새 파일이 오면 값이 바뀐다
-export const PORTS_STALE_MS = 3 * DAY;
+export const COLLECTED_STALE_MS = 3 * DAY;
 
-export function portsFreshness(r: Loaded<PortsData>, now: number): Loaded<PortsData> {
-  return { ...r, fetchedAt: r.value.builtAt, stale: r.stale || now - r.value.builtAt > PORTS_STALE_MS };
+export function freshness<T extends { builtAt: number }>(r: Loaded<T>, now: number): Loaded<T> {
+  return { ...r, fetchedAt: r.value.builtAt, stale: r.stale || now - r.value.builtAt > COLLECTED_STALE_MS };
 }
 
-export async function loadPorts(now = Date.now()): Promise<Loaded<PortsData>> {
-  const r = await withCache('pp:ports', 6 * HOUR, now, async () => {
-    const data = parsePorts(await fetchJson(dataUrl('ports.json'), 15_000));
-    if (!data) throw new Error('invalid ports.json');
+function isAnimal(x: unknown): x is Animal {
+  const a = x as Partial<Animal> | null;
+  return (
+    typeof a?.id === 'number' && Number.isInteger(a.id) &&
+    ANIMAL_GROUPS.includes(a.group as AnimalGroup) &&
+    typeof a.name === 'string' && typeof a.sci === 'string' &&
+    isNum(a.lat) && isNum(a.lng) && validCoord(a.lat, a.lng) &&
+    isNum(a.time) &&
+    typeof a.obscured === 'boolean' &&
+    // img src로 쓰므로 https만
+    (a.photo === null || (typeof a.photo === 'string' && a.photo.startsWith('https://'))) &&
+    (a.license === null || typeof a.license === 'string') &&
+    typeof a.by === 'string'
+  );
+}
+
+export function parseAnimals(json: unknown): AnimalsData | null {
+  const j = json as { builtAt?: unknown; from?: unknown; items?: unknown } | null;
+  if (!isNum(j?.builtAt) || !isDay(j.from) || !Array.isArray(j.items)) return null;
+  return { builtAt: j.builtAt, from: j.from, items: (j.items as unknown[]).filter(isAnimal) };
+}
+
+export async function loadAnimals(now = Date.now()): Promise<Loaded<AnimalsData>> {
+  const r = await withCache('pp:animals', 6 * HOUR, now, async () => {
+    const data = parseAnimals(await fetchJson(dataUrl('animals.json'), 15_000));
+    if (!data) throw new Error('invalid animals.json');
     return data;
   });
-  return portsFreshness(r, now);
+  return freshness(r, now);
 }
