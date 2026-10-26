@@ -35,6 +35,23 @@ export type SatKind = 'station' | 'sat';
 export type Sat = { id: number; name: string; kind: SatKind; epoch: number; periodMin: number; inclination: number; omm: Record<string, unknown> };
 export type SatPos = { lat: number; lng: number; altKm: number };
 
+// iNaturalist 검증 관찰 하나(수집기가 만든 data/animals.json). photo·license는 CC 사진일 때만
+export type AnimalGroup = 'bear' | 'elephant' | 'bigcat' | 'penguin' | 'turtle' | 'seal' | 'whale';
+export type Animal = {
+  id: number;
+  group: AnimalGroup;
+  name: string;
+  sci: string;
+  lat: number;
+  lng: number;
+  time: number;
+  obscured: boolean;
+  photo: string | null;
+  license: string | null;
+  by: string;
+};
+export type AnimalsData = { builtAt: number; from: string; items: Animal[] };
+
 // IMF PortWatch 최근 집계된 7일. days는 through 기준 오래된 순 7개, base는 직전 90일 하루 평균
 export type PortKind = 'port' | 'chokepoint';
 export type VesselType = 'container' | 'dry_bulk' | 'general_cargo' | 'roro' | 'tanker';
