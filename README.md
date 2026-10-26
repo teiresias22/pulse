@@ -1,9 +1,9 @@
 # Pulse
 
-지난 7일간 지구에서 일어난 지진·태풍·토네이도 경보·산불·오로라·로켓 발사·ISS·위성 궤도를 3D 지구본 위에서 되감아 보고, 항만·해협의 주간 물동량도 함께 보여주는 웹 페이지.
+지난 7일간 지구에서 일어난 지진·태풍·토네이도 경보·산불·오로라·로켓 발사·ISS·위성 궤도를 3D 지구본 위에서 되감아 보고, 최근 7일의 야생동물 관찰도 함께 보여주는 웹 페이지.
 
 - 사이트: https://pulse.joon.is-a.dev
-- 서버 없음. 브라우저가 키 없는 공개 API 여섯 개를 직접 부르고, 항만·해협은 GitHub Actions가 하루 한 번 모아 사이트와 같이 배포한 정적 파일을 읽는다.
+- 서버 없음. 브라우저가 키 없는 공개 API 여섯 개를 직접 부르고, 동물 관찰은 GitHub Actions가 하루 한 번 모아 사이트와 같이 배포한 정적 파일을 읽는다.
 
 ## 데이터
 
@@ -15,7 +15,7 @@
 | 토네이도 | [NOAA NWS API](https://www.weather.gov/documentation/services-web-api) Tornado Warning — 지난 7일, 갱신·취소 반영, 미국 전용 | 15분 |
 | 오로라 | [NOAA SWPC Kp 지수](https://www.swpc.noaa.gov/products/planetary-k-index) — 지난 7일 관측 + 3일 예보. 띠는 자기위도 66.5° − 2·Kp 근사 | 30분 |
 | 위성 | [CelesTrak](https://celestrak.org/) GP — stations·science 그룹의 저궤도 위성 약 56개(잔해·고궤도 제외) → [satellite.js](https://github.com/shashwatak/satellite-js)로 브라우저에서 위치 계산 | 1일 |
-| 항만·해협 | [IMF PortWatch](https://portwatch.imf.org/) 일일 입항·통항 — Actions가 하루 1회 집계. 해협 28곳 + 항만 상위 300곳, 최근 집계된 7일 ÷ 직전 90일 하루 평균. 원본이 8–10일 늦다 | 6시간 |
+| 동물 | [iNaturalist](https://www.inaturalist.org/) 검증 관찰 — Actions가 하루 1회 수집. 곰·코끼리·대형 고양이·펭귄·바다거북·물범·고래 7묶음, 최근 7일(약 800건), 4°×4° 칸별로 묶어 표시. 사진은 CC 라이선스만 | 6시간 |
 
 위성 위치는 주기적으로 묻지 않는다. 하루 한 번 받은 궤도 요소로 아무 시각의 위치나 계산하므로 스크러버로 되감을 수 있다. 정거장에 도킹한 우주선은 정거장 10km 안에 있는 동안 숨긴다.
 
