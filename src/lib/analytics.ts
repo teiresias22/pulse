@@ -42,6 +42,12 @@ export function initPosthog(): void {
       capture_pageview: 'history_change',
       capture_pageleave: false,
       disable_session_recording: true,
+      // 프로젝트 원격 설정이 켜도 여기서 끈다 — 페이지 조회·명시 이벤트만 보낸다(스펙: autocapture·리플레이 없음)
+      capture_dead_clicks: false,
+      rageclick: false,
+      enable_heatmaps: false,
+      capture_performance: false,
+      disable_surveys: true,
     });
     posthog.register({ app: 'pulse', environment: import.meta.env.DEV ? 'staging' : 'production' });
     ph = posthog;
