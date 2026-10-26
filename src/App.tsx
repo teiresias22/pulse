@@ -94,7 +94,13 @@ export default function App() {
       }
       if (key === 'tornado') return run(['tornado'], () => loadTornadoes(), setTornadoes);
       if (key === 'aurora') return run(['aurora'], () => loadKp(), setKpPoints);
-      if (key === 'port') return run(['port'], () => loadPorts(), setPorts);
+      // 새 데이터에 없는 항만(상위 300에서 빠짐)의 카드는 닫는다 — 옛 수치에 새 기준 날짜가 붙지 않게
+      if (key === 'port') {
+        return run(['port'], () => loadPorts(), (d: PortsData) => {
+          setPorts(d);
+          setSelected((s) => (s?.kind === 'port' && !d.items.some((x) => x.id === s.port.id) ? null : s));
+        });
+      }
       return run(['iss'], () => loadTle(), setTle);
     },
     [run],
