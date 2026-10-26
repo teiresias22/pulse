@@ -63,18 +63,22 @@ function paintAnimal(el: HTMLElement, c: AnimalCluster, t: number) {
   const n = c.items.length;
   const first = c.items[0];
   const opacity = first ? animalOpacity(first, t).toFixed(2) : '1';
-  const sig = `${n}|${opacity}`;
-  if (el.dataset.sig === sig) return;
-  el.dataset.sig = sig;
-  el.textContent = ANIMAL_ICON[c.group];
-  if (n > 1) {
-    const s = document.createElement('span');
-    s.className = 'marker-count';
-    s.textContent = String(n);
-    el.append(s);
+  // 개수가 바뀔 때만 내용을 다시 만들고, 투명도는 문자열이 바뀔 때만 쓴다(틱마다 마커 ~200개)
+  if (el.dataset.n !== String(n)) {
+    el.dataset.n = String(n);
+    el.textContent = ANIMAL_ICON[c.group];
+    if (n > 1) {
+      const s = document.createElement('span');
+      s.className = 'marker-count';
+      s.textContent = String(n);
+      el.append(s);
+    }
+    el.setAttribute('aria-label', `${msg.animalGroup[c.group]} · ${msg.animalCount(n)}`);
   }
-  el.style.opacity = opacity;
-  el.setAttribute('aria-label', `${msg.animalGroup[c.group]} · ${msg.animalCount(n)}`);
+  if (el.dataset.op !== opacity) {
+    el.dataset.op = opacity;
+    el.style.opacity = opacity;
+  }
 }
 
 export function GlobeView(props: GlobeProps) {

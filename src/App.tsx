@@ -67,6 +67,10 @@ export default function App() {
 
   // 출처별 마지막으로 반영한 fetchedAt. 5분 틱이 같은 캐시를 다시 읽으면 새 객체로 바꾸지 않는다
   // (바꾸면 발사 마커·산불 기둥·위성 위치 계산기가 값은 같은데 매번 다시 만들어진다)
+  const selectedRef = useRef(selected);
+  useEffect(() => {
+    selectedRef.current = selected;
+  });
   const applied = useRef<Partial<Record<LayerKey, number>>>({});
   const run = useCallback(async <T,>(keys: LayerKey[], loader: () => Promise<Loaded<T>>, apply: (v: T) => void) => {
     const set = (st: LayerStatus) => setStatus((s) => ({ ...s, ...Object.fromEntries(keys.map((k) => [k, st])) }));
@@ -100,7 +104,11 @@ export default function App() {
       // 새 데이터에서 빠진 위성의 카드는 닫는다
       return run(['sat'], () => loadSats(), (d: Sat[]) => {
         setSats(d);
-        setSelected((s) => (s?.kind === 'sat' && !d.some((x) => x.id === s.id) ? null : s));
+        const cur = selectedRef.current;
+        if (cur?.kind === 'sat' && !d.some((x) => x.id === cur.id)) {
+          setSelected(null);
+          setFollow(false);
+        }
       });
     },
     [run],
@@ -260,6 +268,8 @@ export default function App() {
     track('layer_toggle', { layer: k, on: !layers.includes(k) });
   };
   const select = (s: Selection) => {
+    // 같은 위성을 다시 누른 게 아니면 따라가기를 끈다(새 위성 자동 추적·지진 클릭 시 카메라 고정 방지)
+    if (!(s.kind === 'sat' && selected?.kind === 'sat' && s.id === selected.id)) setFollow(false);
     setSelected(s);
     track('select_content', { content_type: layerOf(s) });
   };

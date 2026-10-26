@@ -36,7 +36,9 @@ async function observations(from) {
   const results = [];
   let total = null;
   let above = 0;
-  for (;;) {
+  // 정상은 ~820건(5쪽 안팎). 50쪽 × 200 = 1만 건이 넘으면 커서가 맴도는 것으로 본다
+  for (let pages = 1; ; pages++) {
+    if (pages > 50) throw new Error('inaturalist: too many pages');
     const q = new URLSearchParams({
       taxon_id: TAXON_IDS, d1: from, quality_grade: 'research', geo: 'true',
       order_by: 'id', order: 'asc', per_page: String(PER_PAGE), id_above: String(above),
@@ -48,7 +50,9 @@ async function observations(from) {
     total ??= json.total_results;
     results.push(...page);
     if (page.length < PER_PAGE) break;
-    above = page.at(-1).id;
+    const next = page.at(-1)?.id;
+    if (!Number.isInteger(next) || next <= above) throw new Error('inaturalist: cursor stuck');
+    above = next;
     await sleep(1000);
   }
   if (typeof total !== 'number' || results.length < total) throw new Error(`inaturalist: got ${results.length} of ${total}`);

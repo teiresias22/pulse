@@ -1,4 +1,5 @@
 import { DAY, HOUR, isNum, validCoord, type Animal, type AnimalGroup, type AnimalsData, type Loaded } from '../model.ts';
+import { ANIMAL_GROUPS } from '../lib/animals.ts';
 import { withCache } from '../lib/cache.ts';
 import { fetchJson } from './http.ts';
 
@@ -19,13 +20,11 @@ export function freshness<T extends { builtAt: number }>(r: Loaded<T>, now: numb
   return { ...r, fetchedAt: r.value.builtAt, stale: r.stale || now - r.value.builtAt > COLLECTED_STALE_MS };
 }
 
-const GROUPS: AnimalGroup[] = ['bear', 'elephant', 'bigcat', 'penguin', 'turtle', 'seal', 'whale'];
-
 function isAnimal(x: unknown): x is Animal {
   const a = x as Partial<Animal> | null;
   return (
     typeof a?.id === 'number' && Number.isInteger(a.id) &&
-    GROUPS.includes(a.group as AnimalGroup) &&
+    ANIMAL_GROUPS.includes(a.group as AnimalGroup) &&
     typeof a.name === 'string' && typeof a.sci === 'string' &&
     isNum(a.lat) && isNum(a.lng) && validCoord(a.lat, a.lng) &&
     isNum(a.time) &&
