@@ -6,7 +6,8 @@ import { loadKp } from './sources/kp.ts';
 import { kpAt } from './lib/aurora.ts';
 import { loadPorts } from './sources/collected.ts';
 import { loadEonet, type EonetData } from './sources/eonet.ts';
-import { isTleStale, loadTle, makePropagator, orbitPath, type Tle } from './sources/iss.ts';
+import { loadSats, makePropagator } from './sources/satellites.ts';
+import { dockedTo, isSatStale, orbitPath, type SatOnGlobe, type SatOrbit } from './lib/satellites.ts';
 import { Header } from './components/Header.tsx';
 import { Legend } from './components/Legend.tsx';
 import { EventCard } from './components/EventCard.tsx';
@@ -16,7 +17,7 @@ import { Scrubber } from './components/Scrubber.tsx';
 import { timeRange, visibleFires, visibleLaunches, visibleQuakes } from './lib/timeline.ts';
 import { decodeHash, encodeHash } from './lib/hash.ts';
 import { track } from './lib/analytics.ts';
-import { HOUR, LAYERS, MINUTE, SPEEDS, type LayerKey, type LayerStatus, type KpPoint, type Loaded, type Port, type PortsData, type PulseEvent, type Selection, type Storm, type TornadoWarning } from './model.ts';
+import { HOUR, LAYERS, MINUTE, SPEEDS, type LayerKey, type LayerStatus, type KpPoint, type Loaded, type Port, type PortsData, type PulseEvent, type Sat, type SatPos, type Selection, type Storm, type TornadoWarning } from './model.ts';
 import './App.css';
 
 // globe.gl·three는 무거워서 별도 청크로 — 헤더·스크러버가 먼저 그려지고 WebGL 없는 폴백은 받지 않는다
@@ -27,8 +28,8 @@ const webgl = hasWebGL();
 const NO_PORTS: Port[] = [];
 
 // 출처 하나에 로더 하나. 라이브 모드에서 5분마다 전부 부르고, 실제로 받을지는 출처별 캐시가 정한다
-// (지진 1분 · 토네이도 15분 · 태풍·산불·Kp 30분 · 발사 1시간 · 항만 6시간 · ISS 1일). 발사가 한도 초과로 막혀 있으면 로더가 네트워크 없이 옛 캐시를 돌려준다
-const SOURCES: LayerKey[] = ['quake', 'launch', 'storm', 'tornado', 'aurora', 'iss', 'port']; // fire는 storm과 같은 EONET 요청
+// (지진 1분 · 토네이도 15분 · 태풍·산불·Kp 30분 · 발사 1시간 · 항만 6시간 · 위성 1일). 발사가 한도 초과로 막혀 있으면 로더가 네트워크 없이 옛 캐시를 돌려준다
+const SOURCES: LayerKey[] = ['quake', 'launch', 'storm', 'tornado', 'aurora', 'sat', 'port']; // fire는 storm과 같은 EONET 요청
 const layerOf = (s: Selection): LayerKey => (s.kind === 'event' ? s.event.kind : s.kind);
 
 export default function App() {
@@ -48,7 +49,7 @@ export default function App() {
   const [fires, setFires] = useState<PulseEvent[]>([]);
   const [tornadoes, setTornadoes] = useState<TornadoWarning[]>([]);
   const [kpPoints, setKpPoints] = useState<KpPoint[]>([]);
-  const [tle, setTle] = useState<Tle | null>(null);
+  const [sats, setSats] = useState<Sat[]>([]);
   const [ports, setPorts] = useState<PortsData | null>(null);
   const [status, setStatus] = useState<Record<LayerKey, LayerStatus>>({
     quake: { state: 'loading' },
@@ -56,7 +57,7 @@ export default function App() {
     tornado: { state: 'loading' },
     fire: { state: 'loading' },
     launch: { state: 'loading' },
-    iss: { state: 'loading' },
+    sat: { state: 'loading' },
     aurora: { state: 'loading' },
     port: { state: 'loading' },
   });
@@ -64,7 +65,7 @@ export default function App() {
   const [selected, setSelected] = useState<Selection | null>(null);
 
   // 출처별 마지막으로 반영한 fetchedAt. 5분 틱이 같은 캐시를 다시 읽으면 새 객체로 바꾸지 않는다
-  // (바꾸면 발사 마커·산불 기둥·ISS 궤도 계산기가 값은 같은데 매번 다시 만들어진다)
+  // (바꾸면 발사 마커·산불 기둥·위성 위치 계산기가 값은 같은데 매번 다시 만들어진다)
   const applied = useRef<Partial<Record<LayerKey, number>>>({});
   const run = useCallback(async <T,>(keys: LayerKey[], loader: () => Promise<Loaded<T>>, apply: (v: T) => void) => {
     const set = (st: LayerStatus) => setStatus((s) => ({ ...s, ...Object.fromEntries(keys.map((k) => [k, st])) }));
@@ -101,7 +102,11 @@ export default function App() {
           setSelected((s) => (s?.kind === 'port' && !d.items.some((x) => x.id === s.port.id) ? null : s));
         });
       }
-      return run(['iss'], () => loadTle(), setTle);
+      // 새 데이터에서 빠진 위성의 카드는 닫는다
+      return run(['sat'], () => loadSats(), (d: Sat[]) => {
+        setSats(d);
+        setSelected((s) => (s?.kind === 'sat' && !d.some((x) => x.id === s.id) ? null : s));
+      });
     },
     [run],
   );
@@ -216,10 +221,31 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey);
   }, [scrubTo, togglePlay]);
 
-  const positionAt = useMemo(() => (tle ? makePropagator(tle) : null), [tle]);
-  const iss = layers.includes('iss') && positionAt ? positionAt(t) : null;
-  const orbit = iss && positionAt ? orbitPath(positionAt, t) : [];
-  const issStale = tle ? isTleStale(tle, t) : false;
+  // 위성: t마다 전부(약 56개) 위치를 계산하고, 정거장 10km 안의 위성은 도킹 중으로 숨긴다
+  const satOn = layers.includes('sat');
+  const propagators = useMemo(() => new Map(sats.map((s) => [s.id, makePropagator(s)])), [sats]);
+  const satPos = useMemo(() => {
+    const m = new Map<number, SatPos>();
+    if (!satOn) return m;
+    for (const [id, positionAt] of propagators) {
+      const p = positionAt(t);
+      if (p) m.set(id, p);
+    }
+    return m;
+  }, [satOn, propagators, t]);
+  const docked = useMemo(() => dockedTo(sats, satPos), [sats, satPos]);
+  const selectedSat = selected?.kind === 'sat' ? sats.find((s) => s.id === selected.id) ?? null : null;
+  const satsOnGlobe: SatOnGlobe[] = sats.flatMap((sat) => {
+    const pos = satPos.get(sat.id);
+    return pos && !docked.has(sat.id) ? [{ sat, pos }] : [];
+  });
+  const orbits: SatOrbit[] = satsOnGlobe.flatMap(({ sat }) => {
+    if (sat.kind !== 'station' && sat.id !== selectedSat?.id) return [];
+    const positionAt = propagators.get(sat.id);
+    return positionAt ? [{ id: sat.id, points: orbitPath(positionAt, t), stale: isSatStale(sat, t) }] : [];
+  });
+  const followPos = follow && selectedSat ? satPos.get(selectedSat.id) ?? null : null;
+  const dockedNames = selectedSat ? sats.filter((s) => docked.get(s.id) === selectedSat.id).map((s) => s.name) : [];
   const kpNow = layers.includes('aurora') ? kpAt(kpPoints, t) : null;
   const toggleLayer = (k: LayerKey) => {
     // 끄는 레이어의 카드가 열려 있으면 닫고 따라가기도 멈춘다
@@ -235,9 +261,9 @@ export default function App() {
     setSelected(s);
     track('select_content', { content_type: layerOf(s) });
   };
-  const followIss = (f: boolean) => {
+  const followSat = (f: boolean) => {
     setFollow(f);
-    if (f) track('follow_iss');
+    if (f && selectedSat) track('follow_sat', { sat_id: selectedSat.id });
   };
   const shareUrl = () =>
     `${window.location.origin}${window.location.pathname}${encodeHash({ t, layers })}`;
@@ -256,9 +282,9 @@ export default function App() {
           tornadoes={layers.includes('tornado') ? tornadoes : []}
           kp={kpNow}
           ports={layers.includes('port') ? ports?.items ?? NO_PORTS : NO_PORTS}
-          iss={iss}
-          orbit={orbit}
-          issStale={issStale}
+          sats={satsOnGlobe}
+          orbits={orbits}
+          followPos={followPos}
           reducedMotion={reducedMotion}
           follow={follow}
           onSelect={select}
@@ -288,13 +314,14 @@ export default function App() {
                   : selected
           }
           t={t}
-          iss={iss}
-          issStale={issStale}
+          sat={selectedSat}
+          satPos={selectedSat ? satPos.get(selectedSat.id) ?? null : null}
+          docked={dockedNames}
           kp={kpNow}
           portsThrough={ports?.through ?? null}
           now={live ? t : anchor}
           follow={follow}
-          onFollow={followIss}
+          onFollow={followSat}
           onClose={() => {
             setSelected(null);
             setFollow(false);

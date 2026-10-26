@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import Globe, { type GlobeInstance } from 'globe.gl';
-import type { IssPos } from '../sources/iss.ts';
-import type { KpPoint, Port, PulseEvent, Selection, Storm, TornadoWarning } from '../model.ts';
+import type { KpPoint, Port, PulseEvent, Sat, SatPos, Selection, Storm, TornadoWarning } from '../model.ts';
+import type { SatOnGlobe, SatOrbit } from '../lib/satellites.ts';
 import { portRatio, portTrend, type PortTrend } from '../lib/ports.ts';
 import { activeRings, quakeOpacity, ringProgress, visibleTornadoes } from '../lib/timeline.ts';
 import {
@@ -26,9 +26,9 @@ export type GlobeProps = {
   tornadoes: TornadoWarning[];
   kp: KpPoint | null;
   ports: Port[];
-  iss: IssPos | null;
-  orbit: IssPos[];
-  issStale: boolean;
+  sats: SatOnGlobe[]; // 보이는 위성(도킹 중 제외)과 t의 위치
+  orbits: SatOrbit[]; // 정거장 + 선택한 위성의 궤도선
+  followPos: SatPos | null; // 따라가는 위성의 위치
   reducedMotion: boolean;
   follow: boolean;
   onSelect: (s: Selection) => void;
@@ -37,9 +37,9 @@ export type GlobeProps = {
 
 type Marker = {
   lat: number; lng: number; alt: number;
-  launch?: PulseEvent; iss?: true; storm?: Storm; cat?: StormCategory; tornado?: TornadoWarning; aurora?: true; el?: HTMLElement;
+  launch?: PulseEvent; sat?: Sat; storm?: Storm; cat?: StormCategory; tornado?: TornadoWarning; aurora?: true; el?: HTMLElement;
 };
-// 경로 레이어(ISS 궤도 + 태풍 경로 + 오로라 띠). altKm이 없는 점은 지표 바로 위
+// 경로 레이어(위성 궤도 + 태풍 경로 + 오로라 띠). altKm이 없는 점은 지표 바로 위
 type PathPoint = { lat: number; lng: number; altKm?: number };
 type Path = { points: PathPoint[]; color: string; dashed: boolean; aurora?: true };
 
@@ -74,11 +74,10 @@ export function GlobeView(props: GlobeProps) {
   useEffect(() => {
     latest.current = props;
   });
-  // ISS 마커 객체를 재사용해야 globe.gl이 DOM 요소를 매번 새로 만들지 않는다
-  const issMarker = useRef<Marker>({ lat: 0, lng: 0, alt: 0, iss: true });
-  // 궤도선 데이터도 같은 객체를 고쳐 쓴다. 새 객체를 넘기면 three-globe가 선과 LineMaterial을 버려
-  // t가 바뀔 때마다 셰이더를 다시 컴파일했다(재생 중 초당 수 회)
-  const orbitPath = useRef<Path>({ points: [], color: ISS_PATH_COLOR, dashed: false });
+  // 위성 마커·궤도선은 위성 id별로 같은 객체를 고쳐 쓴다. 새 객체를 넘기면 globe.gl이 DOM을 다시 만들고,
+  // 궤도선은 three-globe가 선과 LineMaterial을 버려 t가 바뀔 때마다 셰이더를 다시 컴파일했다(9bac3fe)
+  const satMarkerOf = useRef(new Map<number, Marker>());
+  const satPathOf = useRef(new Map<number, Path>());
   const dayNight = useRef<ShaderMaterial | null>(null);
   const mode = useRef<GlobeMode>('shader');
   const nightTile = useRef<GeoPoint>(antipode(subsolarPoint(props.t)));
@@ -218,14 +217,16 @@ export function GlobeView(props: GlobeProps) {
       const b = document.createElement('button');
       b.type = 'button';
       b.style.pointerEvents = 'auto';
-      if (d.iss) {
-        b.className = 'marker marker-iss';
-        b.textContent = '◉';
-        b.style.color = ISS_COLOR;
-        b.setAttribute('aria-label', 'ISS');
+      if (d.sat) {
+        const station = d.sat.kind === 'station';
+        b.className = station ? 'marker marker-iss' : 'marker marker-sat';
+        b.textContent = station ? '◉' : '•';
+        if (station) b.style.color = ISS_COLOR;
+        b.title = d.sat.name;
+        b.setAttribute('aria-label', d.sat.name);
         b.onclick = (ev) => {
           ev.stopPropagation();
-          latest.current.onSelect({ kind: 'iss' });
+          if (d.sat) latest.current.onSelect({ kind: 'sat', id: d.sat.id });
         };
       } else if (d.launch) {
         const launch = d.launch;
@@ -302,7 +303,7 @@ export function GlobeView(props: GlobeProps) {
     };
   }, []);
 
-  const { t, quakes, launches, storms, fires, tornadoes, kp, ports, iss, orbit, issStale, reducedMotion, follow } = props;
+  const { t, quakes, launches, storms, fires, tornadoes, kp, ports, sats, orbits, followPos, reducedMotion, follow } = props;
 
   // 항만 점은 t와 무관 — 데이터가 바뀔 때만
   useEffect(() => {
@@ -331,7 +332,7 @@ export function GlobeView(props: GlobeProps) {
     globe.current?.ringsData(reducedMotion ? [] : activeRings(quakes, t));
   }, [t, quakes, reducedMotion]);
 
-  // 발사 기호와 ISS 마커. launches 배열은 렌더마다 새로 걸러 오지만 원소(이벤트 객체)는 같으므로,
+  // 발사 기호와 위성 마커. launches 배열은 렌더마다 새로 걸러 오지만 원소(이벤트 객체)는 같으므로,
   // 이벤트 객체별로 마커 객체를 하나씩 기억해 두고 재사용한다(DOM 요소를 1초마다 다시 만들지 않게)
   const markerOf = useRef(new WeakMap<PulseEvent, Marker>());
   // 태풍 마커는 id로 기억한다(5분마다 다시 읽은 캐시가 새 Storm 객체를 주므로)
@@ -381,10 +382,17 @@ export function GlobeView(props: GlobeProps) {
         markers.push(north, south);
       }
     }
-    const m = issMarker.current;
-    if (iss) Object.assign(m, { lat: iss.lat, lng: iss.lng, alt: iss.altKm / EARTH_KM });
-    globe.current?.htmlElementsData(iss ? [...markers, m] : markers);
-  }, [launches, storms, tornadoes, kp, t, iss]);
+    for (const { sat, pos } of sats) {
+      let m = satMarkerOf.current.get(sat.id);
+      if (!m) {
+        m = { lat: 0, lng: 0, alt: 0, sat };
+        satMarkerOf.current.set(sat.id, m);
+      }
+      Object.assign(m, { lat: pos.lat, lng: pos.lng, alt: pos.altKm / EARTH_KM, sat });
+      markers.push(m);
+    }
+    globe.current?.htmlElementsData(markers);
+  }, [launches, storms, tornadoes, kp, t, sats]);
 
   // 태풍 경로 객체도 id별로 재사용한다(새 객체 → LineMaterial 재생성 → 셰이더 재컴파일)
   const stormPathOf = useRef(new Map<string, Path>());
@@ -418,16 +426,22 @@ export function GlobeView(props: GlobeProps) {
       }
       paths.push(...auroraPaths.current);
     }
-    const o = orbitPath.current;
-    o.points = orbit;
-    o.dashed = issStale;
-    if (orbit.length) paths.push(o);
+    for (const o of orbits) {
+      let p = satPathOf.current.get(o.id);
+      if (!p) {
+        p = { points: [], color: ISS_PATH_COLOR, dashed: false };
+        satPathOf.current.set(o.id, p);
+      }
+      p.points = o.points;
+      p.dashed = o.stale;
+      paths.push(p);
+    }
     g.pathsData(paths);
-  }, [orbit, issStale, storms, kp, t]);
+  }, [orbits, storms, kp, t]);
 
   useEffect(() => {
-    if (follow && iss) globe.current?.pointOfView({ lat: iss.lat, lng: iss.lng, altitude: 1.8 }, 0);
-  }, [follow, iss]);
+    if (follow && followPos) globe.current?.pointOfView({ lat: followPos.lat, lng: followPos.lng, altitude: 1.8 }, 0);
+  }, [follow, followPos]);
 
   useEffect(() => {
     const c = globe.current?.controls();

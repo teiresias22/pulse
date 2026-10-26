@@ -50,6 +50,8 @@ body {
 .marker-failure { color: var(--danger); }
 .marker-upcoming { color: var(--warn); }
 .marker-iss { font-size: 18px; }
+.marker-sat { font-size: 16px; color: #c8d1e6; }
+.sym-sat { color: #c8d1e6; }
 .marker:focus-visible { outline: 2px solid var(--accent); border-radius: 50%; }
 .storm-ts { font-size: 14px; text-shadow: 0 0 6px #a0c4ff; }
 .storm-c12 { font-size: 18px; text-shadow: 0 0 8px #bdb2ff; }

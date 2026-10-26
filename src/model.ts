@@ -51,8 +51,8 @@ export type Port = {
 };
 export type PortsData = { builtAt: number; through: Record<PortKind, string>; items: Port[] };
 
-export type LayerKey = 'quake' | 'storm' | 'tornado' | 'fire' | 'launch' | 'iss' | 'aurora' | 'port';
-export const LAYERS: LayerKey[] = ['quake', 'storm', 'tornado', 'fire', 'launch', 'iss', 'aurora', 'port'];
+export type LayerKey = 'quake' | 'storm' | 'tornado' | 'fire' | 'launch' | 'sat' | 'aurora' | 'port';
+export const LAYERS: LayerKey[] = ['quake', 'storm', 'tornado', 'fire', 'launch', 'sat', 'aurora', 'port'];
 
 export const MINUTE = 60_000;
 export const HOUR = 60 * MINUTE;
@@ -64,7 +64,7 @@ export type Loaded<T> = { value: T; fetchedAt: number; stale: boolean };
 
 export type Selection =
   | { kind: 'event'; event: PulseEvent }
-  | { kind: 'iss' }
+  | { kind: 'sat'; id: number }
   | { kind: 'storm'; storm: Storm }
   | { kind: 'tornado'; tornado: TornadoWarning }
   | { kind: 'aurora' }

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
-import type { IssPos } from '../sources/iss.ts';
-import type { KpPoint, PortsData, Selection } from '../model.ts';
+import type { KpPoint, PortsData, Sat, SatPos, Selection } from '../model.ts';
+import { isSatStale } from '../lib/satellites.ts';
 import { fmtCountdown, fmtDay, fmtTime, lang, msg } from '../i18n.ts';
 import { daysBehind, portRatio, portWindow, typeShares } from '../lib/ports.ts';
 import { gScale, ovalLatitude } from '../lib/aurora.ts';
@@ -9,8 +9,9 @@ import { stormAt, stormCategory } from '../lib/storm.ts';
 type Props = {
   selection: Selection;
   t: number;
-  iss: IssPos | null;
-  issStale: boolean;
+  sat: Sat | null;
+  satPos: SatPos | null;
+  docked: string[]; // 이 정거장에 도킹 중인 위성 이름
   kp: KpPoint | null;
   follow: boolean;
   onFollow: (f: boolean) => void;
@@ -27,6 +28,7 @@ export function EventCard(p: Props) {
     : s.kind === 'storm' ? s.storm.id
     : s.kind === 'tornado' ? s.tornado.id
     : s.kind === 'port' ? s.port.id
+    : s.kind === 'sat' ? String(s.id)
     : s.kind;
   useEffect(() => {
     ref.current?.focus();
@@ -36,8 +38,8 @@ export function EventCard(p: Props) {
       <button type="button" className="card-close btn btn-small" onClick={p.onClose} aria-label={msg.close}>
         ✕
       </button>
-      {s.kind === 'iss' ? (
-        <IssBody {...p} />
+      {s.kind === 'sat' ? (
+        <SatBody {...p} />
       ) : s.kind === 'storm' ? (
         <StormBody {...p} />
       ) : s.kind === 'tornado' ? (
@@ -53,24 +55,41 @@ export function EventCard(p: Props) {
   );
 }
 
-function IssBody({ iss, issStale, follow, onFollow }: Props) {
+function SatBody({ sat, satPos, docked, t, follow, onFollow }: Props) {
+  if (!sat) return <p>{msg.failed}</p>;
   return (
     <>
-      <h2>ISS</h2>
-      {iss ? (
+      <h2>{sat.kind === 'station' ? msg.station : msg.satellite}</h2>
+      <p className="card-label">{sat.name}</p>
+      {satPos ? (
         <dl className="num">
           <dt>{msg.issPosition}</dt>
-          <dd>{iss.lat.toFixed(2)}°, {iss.lng.toFixed(2)}°</dd>
+          <dd>{satPos.lat.toFixed(2)}°, {satPos.lng.toFixed(2)}°</dd>
           <dt>{msg.altitude}</dt>
-          <dd>{Math.round(iss.altKm)} km</dd>
+          <dd>{Math.round(satPos.altKm)} km</dd>
+          <dt>{msg.period}</dt>
+          <dd>{Math.round(sat.periodMin)} {msg.minutesUnit}</dd>
+          <dt>{msg.inclination}</dt>
+          <dd>{sat.inclination.toFixed(1)}°</dd>
+          <dt>NORAD</dt>
+          <dd>{sat.id}</dd>
+          {docked.length > 0 && (
+            <>
+              <dt>{msg.docked}</dt>
+              <dd>{docked.join(', ')}</dd>
+            </>
+          )}
         </dl>
       ) : (
-        <p>{msg.failed}</p>
+        <p>{msg.satNoPos}</p>
       )}
-      {issStale && <p className="warn-text">{msg.estimated}</p>}
+      {isSatStale(sat, t) && <p className="warn-text">{msg.estimated}</p>}
       <button type="button" className={`btn${follow ? ' btn-on' : ''}`} onClick={() => onFollow(!follow)}>
         {follow ? msg.unfollow : msg.follow}
       </button>
+      <a className="btn" href={`https://celestrak.org/satcat/table-satcat.php?CATNR=${sat.id}`} target="_blank" rel="noreferrer">
+        {msg.source} ↗
+      </a>
     </>
   );
 }
