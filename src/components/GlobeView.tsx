@@ -1,17 +1,18 @@
 import { useEffect, useRef } from 'react';
 import Globe, { type GlobeInstance } from 'globe.gl';
 import type { IssPos } from '../sources/iss.ts';
-import type { KpPoint, PulseEvent, Selection, Storm, TornadoWarning } from '../model.ts';
+import type { KpPoint, Port, PulseEvent, Selection, Storm, TornadoWarning } from '../model.ts';
+import { portRatio, portTrend, type PortTrend } from '../lib/ports.ts';
 import { activeRings, quakeOpacity, ringProgress, visibleTornadoes } from '../lib/timeline.ts';
 import {
-  AURORA_EQ_COLOR, AURORA_POLE_COLOR, FIRE_COLOR, fireRadius, ISS_COLOR, ISS_PATH_COLOR, LAUNCH_COLOR, quakeColor, quakeRadius,
+  AURORA_EQ_COLOR, AURORA_POLE_COLOR, FIRE_COLOR, fireRadius, ISS_COLOR, ISS_PATH_COLOR, LAUNCH_COLOR, PORT_COLOR, quakeColor, quakeRadius,
   RING_RGB, STORM_PATH_COLOR, TORNADO_FILL, TORNADO_STROKE,
 } from '../lib/style.ts';
 import { auroraRings, GEOMAG_NORTH, GEOMAG_SOUTH, ovalLatitude, ring } from '../lib/aurora.ts';
 import { tornadoCenter } from '../sources/nws.ts';
 import { stormAt, stormCategory, trackUntil, type StormCategory } from '../lib/storm.ts';
 import { msg } from '../i18n.ts';
-import { MeshBasicMaterial, TextureLoader, type ShaderMaterial } from 'three';
+import { Mesh, MeshBasicMaterial, SphereGeometry, TextureLoader, type ShaderMaterial } from 'three';
 import { antipode, subsolarPoint, type GeoPoint } from '../lib/sun.ts';
 import { nextMode, type GlobeMode } from '../lib/globeMode.ts';
 import { createDayNightMaterial, setSunDirection } from '../lib/dayNightMaterial.ts';
@@ -24,6 +25,7 @@ export type GlobeProps = {
   fires: PulseEvent[];
   tornadoes: TornadoWarning[];
   kp: KpPoint | null;
+  ports: Port[];
   iss: IssPos | null;
   orbit: IssPos[];
   issStale: boolean;
@@ -54,6 +56,15 @@ const GIBS_TILE: TileUrl = (x, y, level) =>
   `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlueMarble_ShadedRelief_Bathymetry/default/2004-08/GoogleMapsCompatible_Level8/${level}/${y}/${x}.jpeg`;
 // 타일 모드의 밤: 조명을 돌리면 지진 점까지 어두워지므로 반투명 반구를 덮는다
 const NIGHT_MATERIAL = new MeshBasicMaterial({ color: '#000000', transparent: true, opacity: 0.55, depthWrite: false });
+// 항만 점: 모양 2개·재질 5개를 모든 점이 같이 쓴다(점마다 새 재질 → 셰이더 재컴파일)
+// three-globe의 deallocate()가 objectsData가 바뀔 때(레이어 토글·데이터 갱신) 이들을 dispose한다 — three.js가 다시 올리므로
+// 그때 한 번 재연결될 뿐, 재생 중에는 일어나지 않는다
+const PORT_GEOM = new SphereGeometry(0.35, 8, 6);
+const CHOKE_GEOM = new SphereGeometry(0.7, 12, 8);
+const PORT_MATERIAL = Object.fromEntries(
+  Object.entries(PORT_COLOR).map(([k, color]) => [k, new MeshBasicMaterial({ color })]),
+) as Record<PortTrend, MeshBasicMaterial>;
+const PORT_ALT = 0.008; // 타일 모드 밤 덮개(0.004)보다 위 — 해협 구(반지름 0.7)가 표면 아래로 파묻히지 않게
 
 export function GlobeView(props: GlobeProps) {
   const el = useRef<HTMLDivElement>(null);
@@ -159,6 +170,14 @@ export function GlobeView(props: GlobeProps) {
       .tileMaterial(() => NIGHT_MATERIAL)
       .tilesTransitionDuration(0)
       .globeTileEngineMaxLevel(8)
+      .objectLat('lat')
+      .objectLng('lng')
+      .objectAltitude(PORT_ALT)
+      .objectThreeObject((d: object) => {
+        const p = d as Port;
+        return new Mesh(p.kind === 'chokepoint' ? CHOKE_GEOM : PORT_GEOM, PORT_MATERIAL[portTrend(portRatio(p))]);
+      })
+      .onObjectClick((d) => latest.current.onSelect({ kind: 'port', port: d as Port }))
       .onZoom(({ altitude }) => applyMode(nextMode(mode.current, altitude)));
     // 모바일 GPU 부담 상한(PageSpeed 모바일이 시간 초과됐다). globe.gl도 생성 시 2로 묶지만 기본값이 바뀌어도 유지
     g.renderer().setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -283,7 +302,12 @@ export function GlobeView(props: GlobeProps) {
     };
   }, []);
 
-  const { t, quakes, launches, storms, fires, tornadoes, kp, iss, orbit, issStale, reducedMotion, follow } = props;
+  const { t, quakes, launches, storms, fires, tornadoes, kp, ports, iss, orbit, issStale, reducedMotion, follow } = props;
+
+  // 항만 점은 t와 무관 — 데이터가 바뀔 때만
+  useEffect(() => {
+    globe.current?.objectsData(ports);
+  }, [ports]);
 
   // 점: 지진 + 산불 기둥 + 발사 기둥. 같은 객체를 넘기므로 globe.gl이 메시를 재사용하고 색만 다시 계산한다
   useEffect(() => {

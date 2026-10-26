@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react';
 import type { IssPos } from '../sources/iss.ts';
-import type { KpPoint, Selection } from '../model.ts';
-import { fmtCountdown, fmtTime, lang, msg } from '../i18n.ts';
+import type { KpPoint, PortsData, Selection } from '../model.ts';
+import { fmtCountdown, fmtDay, fmtTime, lang, msg } from '../i18n.ts';
+import { daysBehind, portRatio, portWindow, typeShares } from '../lib/ports.ts';
 import { gScale, ovalLatitude } from '../lib/aurora.ts';
 import { stormAt, stormCategory } from '../lib/storm.ts';
 
@@ -13,13 +14,20 @@ type Props = {
   kp: KpPoint | null;
   follow: boolean;
   onFollow: (f: boolean) => void;
+  portsThrough: PortsData['through'] | null;
+  now: number;
   onClose: () => void;
 };
 
 export function EventCard(p: Props) {
   const ref = useRef<HTMLElement>(null);
   const s = p.selection;
-  const id = s.kind === 'event' ? s.event.id : s.kind === 'storm' ? s.storm.id : s.kind === 'tornado' ? s.tornado.id : s.kind;
+  const id =
+    s.kind === 'event' ? s.event.id
+    : s.kind === 'storm' ? s.storm.id
+    : s.kind === 'tornado' ? s.tornado.id
+    : s.kind === 'port' ? s.port.id
+    : s.kind;
   useEffect(() => {
     ref.current?.focus();
   }, [id]);
@@ -36,6 +44,8 @@ export function EventCard(p: Props) {
         <TornadoBody {...p} />
       ) : s.kind === 'aurora' ? (
         <AuroraBody {...p} />
+      ) : s.kind === 'port' ? (
+        <PortBody {...p} />
       ) : (
         <EventBody {...p} />
       )}
@@ -137,6 +147,44 @@ function AuroraBody({ kp }: Props) {
         <p>{msg.noKp}</p>
       )}
       <p>{msg.auroraApprox}</p>
+    </>
+  );
+}
+
+function PortBody({ selection, portsThrough, now }: Props) {
+  if (selection.kind !== 'port') return null;
+  const p = selection.port;
+  const through = portsThrough?.[p.kind];
+  const ratio = portRatio(p);
+  const total = p.days.reduce((a, b) => a + b, 0);
+  const max = Math.max(p.base, ...p.days, 1);
+  const win = through ? portWindow(through) : null;
+  const shares = typeShares(p.byType);
+  const pct = ratio === null ? null : Math.round((ratio - 1) * 100);
+  return (
+    <>
+      <h2>{msg.portKind[p.kind]}</h2>
+      <p className="card-label">{p.country ? `${p.name} · ${p.country}` : p.name}</p>
+      {through && win && <p className="num card-note">{msg.portRange(fmtDay(win.from), fmtDay(win.to), daysBehind(through, now))}</p>}
+      <div className="bars" role="img" aria-label={msg.portBars(total, Math.round(p.base))}>
+        {p.days.map((n, i) => (
+          <span key={i} className="bar" style={{ height: `${(n / max) * 100}%` }} />
+        ))}
+        <span className="bar-base" style={{ bottom: `${(p.base / max) * 100}%` }} />
+      </div>
+      <dl className="num">
+        <dt>{msg.vsUsual}</dt>
+        <dd>{pct === null ? '—' : `${pct > 0 ? '+' : ''}${pct}%`}</dd>
+        <dt>{msg.vessels7d}</dt>
+        <dd>{total.toLocaleString(lang)}</dd>
+        {shares.length > 0 && (
+          <>
+            <dt>{msg.vesselMix}</dt>
+            <dd>{shares.map((x) => `${msg.vessel[x.type]} ${Math.round(x.share * 100)}%`).join(' · ')}</dd>
+          </>
+        )}
+      </dl>
+      <p className="card-note">{msg.portNote}</p>
     </>
   );
 }

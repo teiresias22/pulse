@@ -3,11 +3,22 @@ on:
   push:
     branches: [master]
   pull_request:
+  # 하루 한 번 PortWatch를 모아 사이트와 같이 다시 배포한다(원본이 하루 단위·8–10일 지연이라 충분하다).
+  # 공개 저장소 cron은 60일 동안 커밋이 없으면 GitHub이 끈다(메일로 알림)
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
 permissions:
   contents: read
+# push 배포와 cron 배포가 서로 덮어쓰지 않게 한 줄로 세운다(둘 다 직전 데이터를 받아 이어 쓴다)
+concurrency:
+  group: ${{ github.event_name == 'pull_request' && format('pr-{0}', github.ref) || 'pages' }}
+  cancel-in-progress: false
 jobs:
   check:
     runs-on: ubuntu-latest
+    outputs:
+      ports_age_d: ${{ steps.collect.outputs.ports_age_d }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -20,12 +31,15 @@ jobs:
         env:
           VITE_GA_ID: ${{ vars.GA_ID }}
       - run: npm run check
+      - id: collect
+        if: github.event_name != 'pull_request'
+        run: node scripts/collect/run.mjs dist
       - uses: actions/upload-pages-artifact@v3
-        if: github.event_name == 'push'
+        if: github.event_name != 'pull_request'
         with:
           path: dist
   deploy:
-    if: github.event_name == 'push'
+    if: github.event_name != 'pull_request'
     needs: check
     runs-on: ubuntu-latest
     permissions:
@@ -37,3 +51,10 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+  # 배포는 했지만 항만 데이터가 3일 넘게 새로 만들어지지 않았으면 실패로 표시해 메일이 오게 한다
+  health:
+    if: github.event_name != 'pull_request'
+    needs: [check, deploy]
+    runs-on: ubuntu-latest
+    steps:
+      - run: test "${{ needs.check.outputs.ports_age_d }}" -le 3

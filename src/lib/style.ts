@@ -1,3 +1,4 @@
+import type { PortTrend } from './ports.ts';
 export const LAUNCH_COLOR = '#7bdff2';
 export const ISS_COLOR = '#f5f7ff';
 export const RING_RGB = '239, 71, 111';
@@ -26,3 +27,12 @@ export const TORNADO_FILL = 'rgba(239, 71, 111, 0.45)';
 export const TORNADO_STROKE = '#ef476f';
 export const AURORA_EQ_COLOR = 'rgba(90, 255, 160, 0.85)';
 export const AURORA_POLE_COLOR = 'rgba(90, 255, 160, 0.35)';
+
+// 최근 7일 ÷ 평소: 주황 = 줄었음, 회색 = 평소, 청록 = 늘었음
+export const PORT_COLOR: Record<PortTrend, string> = {
+  down2: '#f4a261',
+  down: '#f7c59f',
+  normal: '#9aa3b2',
+  up: '#8fdcd4',
+  up2: '#2ec4b6',
+};

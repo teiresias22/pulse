@@ -30,8 +30,24 @@ export type TornadoWarning = {
 // NOAA 행성 Kp 지수(3시간 구간의 시작 시각). kind: 관측 · 추정(관측 대기) · 예보
 export type KpPoint = { time: number; kp: number; kind: 'observed' | 'estimated' | 'predicted' };
 
-export type LayerKey = 'quake' | 'storm' | 'tornado' | 'fire' | 'launch' | 'iss' | 'aurora';
-export const LAYERS: LayerKey[] = ['quake', 'storm', 'tornado', 'fire', 'launch', 'iss', 'aurora'];
+// IMF PortWatch 최근 집계된 7일. days는 through 기준 오래된 순 7개, base는 직전 90일 하루 평균
+export type PortKind = 'port' | 'chokepoint';
+export type VesselType = 'container' | 'dry_bulk' | 'general_cargo' | 'roro' | 'tanker';
+export type Port = {
+  id: string;
+  kind: PortKind;
+  name: string;
+  country: string;
+  lat: number;
+  lng: number;
+  days: number[];
+  base: number;
+  byType: Record<VesselType, number>;
+};
+export type PortsData = { builtAt: number; through: Record<PortKind, string>; items: Port[] };
+
+export type LayerKey = 'quake' | 'storm' | 'tornado' | 'fire' | 'launch' | 'iss' | 'aurora' | 'port';
+export const LAYERS: LayerKey[] = ['quake', 'storm', 'tornado', 'fire', 'launch', 'iss', 'aurora', 'port'];
 
 export const MINUTE = 60_000;
 export const HOUR = 60 * MINUTE;
@@ -46,7 +62,8 @@ export type Selection =
   | { kind: 'iss' }
   | { kind: 'storm'; storm: Storm }
   | { kind: 'tornado'; tornado: TornadoWarning }
-  | { kind: 'aurora' };
+  | { kind: 'aurora' }
+  | { kind: 'port'; port: Port };
 
 export type LayerStatus = { state: 'loading' | 'ok' | 'error'; fetchedAt?: number; stale?: boolean };
 
