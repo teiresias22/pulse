@@ -3,7 +3,7 @@ on:
   push:
     branches: [master]
   pull_request:
-  # 하루 한 번 PortWatch를 모아 사이트와 같이 다시 배포한다(원본이 하루 단위·8–10일 지연이라 충분하다).
+  # 하루 한 번 iNaturalist 최근 7일 관찰을 모아 사이트와 같이 다시 배포한다(검증 관찰이 며칠에 걸쳐 쌓여 하루 단위면 충분하다).
   # 공개 저장소 cron은 60일 동안 커밋이 없으면 GitHub이 끈다(메일로 알림)
   schedule:
     - cron: '17 3 * * *'
@@ -18,7 +18,7 @@ jobs:
   check:
     runs-on: ubuntu-latest
     outputs:
-      ports_age_d: ${{ steps.collect.outputs.ports_age_d }}
+      animals_age_d: ${{ steps.collect.outputs.animals_age_d }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -51,10 +51,10 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
-  # 배포는 했지만 항만 데이터가 3일 넘게 새로 만들어지지 않았으면 실패로 표시해 메일이 오게 한다
+  # 배포는 했지만 동물 데이터가 3일 넘게 새로 만들어지지 않았으면 실패로 표시해 메일이 오게 한다
   health:
     if: github.event_name != 'pull_request'
     needs: [check, deploy]
     runs-on: ubuntu-latest
     steps:
-      - run: test "${{ needs.check.outputs.ports_age_d }}" -le 3
+      - run: test "${{ needs.check.outputs.animals_age_d }}" -le 3
