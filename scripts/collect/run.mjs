@@ -38,12 +38,13 @@ async function arcgis(service, params, limit = Infinity) {
     const res = await fetch(`${ARCGIS}/${service}/FeatureServer/0/query`, {
       method: 'POST',
       // resultOffset=0 을 보내면 outStatistics 질의가 400이라 첫 쪽에는 싣지 않는다
-      body: new URLSearchParams({ f: 'json', returnGeometry: 'false', ...(offset && { resultOffset: String(offset) }), ...params }),
+      body: new URLSearchParams({ f: 'json', returnGeometry: 'false', ...(offset && { resultOffset: String(offset) }), ...(!params.outStatistics && { orderByFields: 'ObjectId' }), ...params }),
       signal: AbortSignal.timeout(60_000),
     });
     if (!res.ok) throw new Error(`${service}: HTTP ${res.status}`);
     const json = await res.json();
     if (json.error) throw new Error(`${service}: ${json.error.message}`);
+    if (params.returnCountOnly) return json.count;
     rows.push(...json.features.map((f) => f.attributes));
     if (!json.exceededTransferLimit || rows.length >= limit) return rows.slice(0, limit);
   }
@@ -71,10 +72,14 @@ async function collectKind(kind) {
   );
   const baseSums = topSums(sums, top);
   const ids = [...baseSums.keys()].map((id) => `'${id}'`).join(',');
+  const recentWhere = `date >= DATE '${shiftDate(through, -6)}' AND portid IN (${ids})`;
   const recent = await arcgis(DAILY[kind], {
-    where: `date >= DATE '${shiftDate(through, -6)}' AND portid IN (${ids})`,
+    where: recentWhere,
     outFields: ['portid', 'date', f.total, ...TYPES.map(f.type)].join(','),
   });
+  // 쪽 넘김이 행을 흘리면 최근 날짜가 0으로 나오므로, 서버가 센 행 수와 다르면 던진다(직전 데이터로 물러남)
+  const count = await arcgis(DAILY[kind], { where: recentWhere, returnCountOnly: 'true' });
+  if (recent.length !== count) throw new Error(`${kind}: recent rows ${recent.length} != count ${count}`);
   const meta = await arcgis(META[kind], { where: `portid IN (${ids})`, outFields: '*' });
   return { through, items: buildItems(kind, { through, meta, baseSums, recent }) };
 }
