@@ -30,6 +30,7 @@ jobs:
       - run: npm run build
         env:
           VITE_GA_ID: ${{ vars.GA_ID }}
+          VITE_POSTHOG_KEY: ${{ vars.POSTHOG_KEY }}
       - run: npm run check
       - id: collect
         if: github.event_name != 'pull_request'
