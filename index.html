@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Pulse — Earthquakes, Rocket Launches &amp; the ISS on a 3D Globe</title>
-    <meta name="description" content="Replay the last 7 days of earthquakes, storms, tornadoes, wildfires, auroras, rocket launches and the ISS on an interactive 3D globe with a time scrubber, plus weekly port and shipping-lane activity. Free and open source." />
+    <meta name="description" content="Replay the last 7 days of earthquakes, storms, tornadoes, wildfires, auroras, rocket launches and satellites on an interactive 3D globe with a time scrubber, plus weekly port and shipping-lane activity. Free and open source." />
     <meta name="theme-color" content="#05070d" />
     <meta name="google-site-verification" content="Zc5yq-VNqzUCyuv3NYHmQ_ue4gbFbA2VUUX1qCd4-As" />
     <link rel="canonical" href="%VITE_SITE_URL%" />
@@ -13,7 +13,7 @@
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Pulse" />
     <meta property="og:title" content="Pulse — Earthquakes, Rocket Launches &amp; the ISS on a 3D Globe" />
-    <meta property="og:description" content="Replay the last 7 days of earthquakes, storms, tornadoes, wildfires, auroras, rocket launches and the ISS on an interactive 3D globe with a time scrubber, plus weekly port and shipping-lane activity. Free and open source." />
+    <meta property="og:description" content="Replay the last 7 days of earthquakes, storms, tornadoes, wildfires, auroras, rocket launches and satellites on an interactive 3D globe with a time scrubber, plus weekly port and shipping-lane activity. Free and open source." />
     <meta property="og:url" content="%VITE_SITE_URL%" />
     <meta property="og:image" content="%VITE_SITE_URL%og-image.jpg" />
     <meta property="og:image:width" content="1200" />
@@ -23,7 +23,7 @@
     <meta property="og:locale:alternate" content="ko_KR" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Pulse — Earthquakes, Rocket Launches &amp; the ISS on a 3D Globe" />
-    <meta name="twitter:description" content="Replay the last 7 days of earthquakes, storms, tornadoes, wildfires, auroras, rocket launches and the ISS on an interactive 3D globe with a time scrubber, plus weekly port and shipping-lane activity. Free and open source." />
+    <meta name="twitter:description" content="Replay the last 7 days of earthquakes, storms, tornadoes, wildfires, auroras, rocket launches and satellites on an interactive 3D globe with a time scrubber, plus weekly port and shipping-lane activity. Free and open source." />
     <meta name="twitter:image" content="%VITE_SITE_URL%og-image.jpg" />
     <script type="application/ld+json">
       {
@@ -35,7 +35,7 @@
         "applicationCategory": "EducationalApplication",
         "operatingSystem": "Any (requires WebGL)",
         "browserRequirements": "Requires JavaScript and WebGL",
-        "description": "Replay the last 7 days of earthquakes, storms, tornadoes, wildfires, auroras, rocket launches and the ISS on an interactive 3D globe with a time scrubber, plus weekly port and shipping-lane activity. Free and open source.",
+        "description": "Replay the last 7 days of earthquakes, storms, tornadoes, wildfires, auroras, rocket launches and satellites on an interactive 3D globe with a time scrubber, plus weekly port and shipping-lane activity. Free and open source.",
         "inLanguage": ["en", "ko"],
         "isAccessibleForFree": true,
         "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
@@ -43,7 +43,7 @@
         "isBasedOn": [
           "https://earthquake.usgs.gov/earthquakes/feed/v1.0/geojson.php",
           "https://thespacedevs.com/llapi",
-          "https://wheretheiss.at/w/developer",
+          "https://celestrak.org/",
           "https://eonet.gsfc.nasa.gov/",
           "https://www.weather.gov/documentation/services-web-api",
           "https://www.swpc.noaa.gov/products/planetary-k-index",
@@ -59,16 +59,16 @@
       <summary>About Pulse</summary>
       <h2>Earth’s last 7 days, live</h2>
       <p>
-        Pulse replays the last 7 days of earthquakes, tropical storms, US tornado warnings, wildfires, auroras, rocket launches and the International Space Station (ISS)
-        orbit on an interactive 3D globe. Drag the time scrubber or press play to rewind the week.
+        Pulse replays the last 7 days of earthquakes, tropical storms, US tornado warnings, wildfires, auroras, rocket launches and the orbits of the International Space Station (ISS) and other satellites
+        on an interactive 3D globe. Drag the time scrubber or press play to rewind the week.
         Earthquakes are sized and colored by magnitude, and launches are marked by outcome: success, failure or upcoming. Tropical storms move along their observed tracks, and wildfires are shown while they burn. Tornado warnings appear while they are in effect, and the aurora band follows the Kp index.
-        The ISS position is computed in your browser from its TLE with satellite.js, and the data refreshes live. Ports and shipping chokepoints show the most recent week IMF PortWatch has published (about 8–10 days behind), compared with the previous 90 days.
+        The ISS, China's Tiangong station and about 50 science satellites are positioned in your browser from CelesTrak orbital elements with satellite.js, and the data refreshes live. Ports and shipping chokepoints show the most recent week IMF PortWatch has published (about 8–10 days behind), compared with the previous 90 days.
       </p>
       <h3>Data sources</h3>
       <ul>
         <li><a href="https://earthquake.usgs.gov/earthquakes/feed/v1.0/geojson.php" rel="noopener">USGS Earthquake Hazards Program</a></li>
         <li><a href="https://thespacedevs.com/llapi" rel="noopener">Launch Library 2 by The Space Devs</a></li>
-        <li><a href="https://wheretheiss.at/w/developer" rel="noopener">Where the ISS at?</a></li>
+        <li><a href="https://celestrak.org/" rel="noopener">CelesTrak</a> (satellite orbital elements)</li>
         <li><a href="https://eonet.gsfc.nasa.gov/" rel="noopener">NASA EONET</a> (tropical storms &amp; wildfires)</li>
         <li><a href="https://www.weather.gov/documentation/services-web-api" rel="noopener">NOAA National Weather Service</a> (tornado warnings)</li>
         <li><a href="https://www.swpc.noaa.gov/products/planetary-k-index" rel="noopener">NOAA Space Weather Prediction Center</a> (Kp index)</li>
