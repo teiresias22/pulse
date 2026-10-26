@@ -12,7 +12,7 @@ test('왕복: 인코딩한 값을 그대로 되읽는다', () => {
 });
 
 test('빈 해시 → 라이브 + 전체 레이어', () => {
-  assert.deepEqual(decodeHash(''), { t: null, layers: ['quake', 'storm', 'tornado', 'fire', 'launch', 'sat', 'aurora', 'port'] });
+  assert.deepEqual(decodeHash(''), { t: null, layers: ['quake', 'storm', 'tornado', 'fire', 'launch', 'sat', 'aurora', 'animal'] });
 });
 
 test('잘못된 t는 라이브, 모르는 레이어는 버리고 순서는 정해진 순서로', () => {
@@ -29,4 +29,8 @@ test('layers= 가 비어 있으면 레이어 없음(전부 끈 상태도 공유 
 
 test('옛 링크의 iss는 sat으로 읽는다', () => {
   assert.deepEqual(decodeHash('#layers=iss,quake'), { t: null, layers: ['quake', 'sat'] });
+});
+
+test('옛 링크의 port는 무시한다', () => {
+  assert.deepEqual(decodeHash('#layers=port,quake'), { t: null, layers: ['quake'] });
 });

@@ -1,8 +1,8 @@
 import { msg } from '../i18n.ts';
 
-type Props = { portOn: boolean };
+type Props = { animalOn: boolean };
 
-export function Legend({ portOn }: Props) {
+export function Legend({ animalOn }: Props) {
   return (
     <details className="legend panel" open={window.innerWidth > 640}>
       <summary>{msg.legendTitle}</summary>
@@ -18,7 +18,7 @@ export function Legend({ portOn }: Props) {
         <li><span className="sym sym-aurora">〰</span> {msg.auroraLegend}</li>
         <li><span className="sym">▲</span> {msg.status.success} · <span className="sym sym-failure">✕</span> {msg.status.failure} · <span className="sym sym-upcoming">◇</span> {msg.status.upcoming}</li>
         <li><span className="sym">◉</span> {msg.station} · <span className="sym sym-sat">•</span> {msg.satellite}</li>
-        {portOn && <li><span className="sym">⚓</span> {msg.portLegend}</li>}
+        {animalOn && <li><span className="sym">🐻🐘🐅🐧🐢🦭🐋</span> {msg.animalLegend}</li>}
       </ul>
     </details>
   );

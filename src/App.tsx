@@ -4,7 +4,8 @@ import { loadLaunches } from './sources/launches.ts';
 import { loadTornadoes } from './sources/nws.ts';
 import { loadKp } from './sources/kp.ts';
 import { kpAt } from './lib/aurora.ts';
-import { loadPorts } from './sources/collected.ts';
+import { loadAnimals } from './sources/collected.ts';
+import { clusterAnimals, visibleAnimals, type AnimalCluster } from './lib/animals.ts';
 import { loadEonet, type EonetData } from './sources/eonet.ts';
 import { loadSats, makePropagator } from './sources/satellites.ts';
 import { dockedTo, isSatStale, orbitPath, type SatOnGlobe, type SatOrbit } from './lib/satellites.ts';
@@ -17,7 +18,7 @@ import { Scrubber } from './components/Scrubber.tsx';
 import { timeRange, visibleFires, visibleLaunches, visibleQuakes } from './lib/timeline.ts';
 import { decodeHash, encodeHash } from './lib/hash.ts';
 import { track } from './lib/analytics.ts';
-import { HOUR, LAYERS, MINUTE, SPEEDS, type LayerKey, type LayerStatus, type KpPoint, type Loaded, type Port, type PortsData, type PulseEvent, type Sat, type SatPos, type Selection, type Storm, type TornadoWarning } from './model.ts';
+import { HOUR, LAYERS, MINUTE, SPEEDS, type LayerKey, type LayerStatus, type KpPoint, type Loaded, type AnimalsData, type PulseEvent, type Sat, type SatPos, type Selection, type Storm, type TornadoWarning } from './model.ts';
 import './App.css';
 
 // globe.gl·three는 무거워서 별도 청크로 — 헤더·스크러버가 먼저 그려지고 WebGL 없는 폴백은 받지 않는다
@@ -25,11 +26,11 @@ const GlobeView = lazy(() => import('./components/GlobeView.tsx').then((m) => ({
 
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const webgl = hasWebGL();
-const NO_PORTS: Port[] = [];
+const NO_ANIMALS: AnimalCluster[] = [];
 
 // 출처 하나에 로더 하나. 라이브 모드에서 5분마다 전부 부르고, 실제로 받을지는 출처별 캐시가 정한다
-// (지진 1분 · 토네이도 15분 · 태풍·산불·Kp 30분 · 발사 1시간 · 항만 6시간 · 위성 1일). 발사가 한도 초과로 막혀 있으면 로더가 네트워크 없이 옛 캐시를 돌려준다
-const SOURCES: LayerKey[] = ['quake', 'launch', 'storm', 'tornado', 'aurora', 'sat', 'port']; // fire는 storm과 같은 EONET 요청
+// (지진 1분 · 토네이도 15분 · 태풍·산불·Kp 30분 · 발사 1시간 · 동물 6시간 · 위성 1일). 발사가 한도 초과로 막혀 있으면 로더가 네트워크 없이 옛 캐시를 돌려준다
+const SOURCES: LayerKey[] = ['quake', 'launch', 'storm', 'tornado', 'aurora', 'sat', 'animal']; // fire는 storm과 같은 EONET 요청
 const layerOf = (s: Selection): LayerKey => (s.kind === 'event' ? s.event.kind : s.kind);
 
 export default function App() {
@@ -50,7 +51,7 @@ export default function App() {
   const [tornadoes, setTornadoes] = useState<TornadoWarning[]>([]);
   const [kpPoints, setKpPoints] = useState<KpPoint[]>([]);
   const [sats, setSats] = useState<Sat[]>([]);
-  const [ports, setPorts] = useState<PortsData | null>(null);
+  const [animals, setAnimals] = useState<AnimalsData | null>(null);
   const [status, setStatus] = useState<Record<LayerKey, LayerStatus>>({
     quake: { state: 'loading' },
     storm: { state: 'loading' },
@@ -59,7 +60,7 @@ export default function App() {
     launch: { state: 'loading' },
     sat: { state: 'loading' },
     aurora: { state: 'loading' },
-    port: { state: 'loading' },
+    animal: { state: 'loading' },
   });
   const [follow, setFollow] = useState(false);
   const [selected, setSelected] = useState<Selection | null>(null);
@@ -95,13 +96,7 @@ export default function App() {
       }
       if (key === 'tornado') return run(['tornado'], () => loadTornadoes(), setTornadoes);
       if (key === 'aurora') return run(['aurora'], () => loadKp(), setKpPoints);
-      // 새 데이터에 없는 항만(상위 300에서 빠짐)의 카드는 닫는다 — 옛 수치에 새 기준 날짜가 붙지 않게
-      if (key === 'port') {
-        return run(['port'], () => loadPorts(), (d: PortsData) => {
-          setPorts(d);
-          setSelected((s) => (s?.kind === 'port' && !d.items.some((x) => x.id === s.port.id) ? null : s));
-        });
-      }
+      if (key === 'animal') return run(['animal'], () => loadAnimals(), setAnimals);
       // 새 데이터에서 빠진 위성의 카드는 닫는다
       return run(['sat'], () => loadSats(), (d: Sat[]) => {
         setSats(d);
@@ -247,6 +242,13 @@ export default function App() {
   const followPos = follow && selectedSat ? satPos.get(selectedSat.id) ?? null : null;
   const dockedNames = selectedSat ? sats.filter((s) => docked.get(s.id) === selectedSat.id).map((s) => s.name) : [];
   const kpNow = layers.includes('aurora') ? kpAt(kpPoints, t) : null;
+  // 동물: 지금 t에 보이는 관찰을 칸·묶음별로. 카드는 같은 key의 칸을 다시 찾는다(그 칸이 없으면 그리지 않는다)
+  const animalOn = layers.includes('animal');
+  const animalClusters = useMemo(
+    () => (animalOn && animals ? clusterAnimals(visibleAnimals(animals.items, t)) : NO_ANIMALS),
+    [animalOn, animals, t],
+  );
+  const selectedCluster = selected?.kind === 'animal' ? animalClusters.find((c) => c.key === selected.key) ?? null : null;
   const toggleLayer = (k: LayerKey) => {
     // 끄는 레이어의 카드가 열려 있으면 닫고 따라가기도 멈춘다
     const open = selected && layerOf(selected);
@@ -281,7 +283,7 @@ export default function App() {
           fires={layers.includes('fire') ? visibleFires(fires, t) : []}
           tornadoes={layers.includes('tornado') ? tornadoes : []}
           kp={kpNow}
-          ports={layers.includes('port') ? ports?.items ?? NO_PORTS : NO_PORTS}
+          animals={animalClusters}
           sats={satsOnGlobe}
           orbits={orbits}
           followPos={followPos}
@@ -300,8 +302,8 @@ export default function App() {
         onRetry={(k) => void load(k)}
         shareUrl={shareUrl}
       />
-      <Legend portOn={layers.includes('port')} />
-      {selected && (
+      <Legend animalOn={animalOn} />
+      {selected && (selected.kind !== 'animal' || selectedCluster) && (
         <EventCard
           selection={
             // 태풍·토네이도 카드는 새로 받은 데이터로 보인다(지도 마커와 같은 값 — 갱신·취소된 경보의 종료 시각 등)
@@ -309,17 +311,14 @@ export default function App() {
               ? { kind: 'storm', storm: storms.find((s) => s.id === selected.storm.id) ?? selected.storm }
               : selected.kind === 'tornado'
                 ? { kind: 'tornado', tornado: tornadoes.find((w) => w.id === selected.tornado.id) ?? selected.tornado }
-                : selected.kind === 'port'
-                  ? { kind: 'port', port: ports?.items.find((x) => x.id === selected.port.id) ?? selected.port }
-                  : selected
+                : selected
           }
           t={t}
           sat={selectedSat}
           satPos={selectedSat ? satPos.get(selectedSat.id) ?? null : null}
           docked={dockedNames}
           kp={kpNow}
-          portsThrough={ports?.through ?? null}
-          now={live ? t : anchor}
+          animalCluster={selectedCluster}
           follow={follow}
           onFollow={followSat}
           onClose={() => {

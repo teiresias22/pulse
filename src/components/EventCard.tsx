@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react';
-import type { KpPoint, PortsData, Sat, SatPos, Selection } from '../model.ts';
+import type { KpPoint, Sat, SatPos, Selection } from '../model.ts';
 import { isSatStale } from '../lib/satellites.ts';
 import { fmtCountdown, fmtDay, fmtTime, lang, msg } from '../i18n.ts';
-import { daysBehind, portRatio, portWindow, typeShares } from '../lib/ports.ts';
+import { ANIMAL_ICON, licenseLabel, type AnimalCluster } from '../lib/animals.ts';
 import { gScale, ovalLatitude } from '../lib/aurora.ts';
 import { stormAt, stormCategory } from '../lib/storm.ts';
 
@@ -15,8 +15,7 @@ type Props = {
   kp: KpPoint | null;
   follow: boolean;
   onFollow: (f: boolean) => void;
-  portsThrough: PortsData['through'] | null;
-  now: number;
+  animalCluster: AnimalCluster | null;
   onClose: () => void;
 };
 
@@ -27,7 +26,7 @@ export function EventCard(p: Props) {
     s.kind === 'event' ? s.event.id
     : s.kind === 'storm' ? s.storm.id
     : s.kind === 'tornado' ? s.tornado.id
-    : s.kind === 'port' ? s.port.id
+    : s.kind === 'animal' ? s.key
     : s.kind === 'sat' ? String(s.id)
     : s.kind;
   useEffect(() => {
@@ -46,8 +45,8 @@ export function EventCard(p: Props) {
         <TornadoBody {...p} />
       ) : s.kind === 'aurora' ? (
         <AuroraBody {...p} />
-      ) : s.kind === 'port' ? (
-        <PortBody {...p} />
+      ) : s.kind === 'animal' ? (
+        <AnimalBody {...p} />
       ) : (
         <EventBody {...p} />
       )}
@@ -170,40 +169,38 @@ function AuroraBody({ kp }: Props) {
   );
 }
 
-function PortBody({ selection, portsThrough, now }: Props) {
-  if (selection.kind !== 'port') return null;
-  const p = selection.port;
-  const through = portsThrough?.[p.kind];
-  const ratio = portRatio(p);
-  const total = p.days.reduce((a, b) => a + b, 0);
-  const max = Math.max(p.base, ...p.days, 1);
-  const win = through ? portWindow(through) : null;
-  const shares = typeShares(p.byType);
-  const pct = ratio === null ? null : Math.round((ratio - 1) * 100);
+function AnimalBody({ animalCluster: c }: Props) {
+  if (!c) return null;
+  const shown = c.items.slice(0, 20);
   return (
     <>
-      <h2>{msg.portKind[p.kind]}</h2>
-      <p className="card-label">{p.country ? `${p.name} · ${p.country}` : p.name}</p>
-      {through && win && <p className="num card-note">{msg.portRange(fmtDay(win.from), fmtDay(win.to), daysBehind(through, now))}</p>}
-      <div className="bars" role="img" aria-label={msg.portBars(total, Math.round(p.base))}>
-        {p.days.map((n, i) => (
-          <span key={i} className="bar" style={{ height: `${(n / max) * 100}%` }} />
+      <h2>{msg.layer.animal}</h2>
+      <p className="card-label">
+        {ANIMAL_ICON[c.group]} {msg.animalGroup[c.group]} · {msg.animalCount(c.items.length)}
+      </p>
+      <ul className="obs">
+        {shown.map((a) => (
+          <li key={a.id}>
+            {a.photo ? (
+              <img src={a.photo} alt={a.name || a.sci} loading="lazy" width={48} height={48} />
+            ) : (
+              <span className="obs-noimg" aria-hidden="true">{ANIMAL_ICON[a.group]}</span>
+            )}
+            <span>
+              <a href={`https://www.inaturalist.org/observations/${a.id}`} target="_blank" rel="noreferrer">
+                {a.name || a.sci}
+              </a>
+              <br />
+              <i>{a.sci}</i> · {fmtDay(a.time)}
+              {a.obscured && ` · ${msg.obscured}`}
+              <br />
+              <span className="card-note">© {a.by}{a.license ? `, ${licenseLabel(a.license)}` : ''}</span>
+            </span>
+          </li>
         ))}
-        <span className="bar-base" style={{ bottom: `${(p.base / max) * 100}%` }} />
-      </div>
-      <dl className="num">
-        <dt>{msg.vsUsual}</dt>
-        <dd>{pct === null ? '—' : `${pct > 0 ? '+' : ''}${pct}%`}</dd>
-        <dt>{msg.vessels7d}</dt>
-        <dd>{total.toLocaleString(lang)}</dd>
-        {shares.length > 0 && (
-          <>
-            <dt>{msg.vesselMix}</dt>
-            <dd>{shares.map((x) => `${msg.vessel[x.type]} ${Math.round(x.share * 100)}%`).join(' · ')}</dd>
-          </>
-        )}
-      </dl>
-      <p className="card-note">{msg.portNote}</p>
+      </ul>
+      {c.items.length > shown.length && <p className="card-note">{msg.andMore(c.items.length - shown.length)}</p>}
+      <p className="card-note">{msg.animalNote}</p>
     </>
   );
 }

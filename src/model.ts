@@ -52,24 +52,8 @@ export type Animal = {
 };
 export type AnimalsData = { builtAt: number; from: string; items: Animal[] };
 
-// IMF PortWatch 최근 집계된 7일. days는 through 기준 오래된 순 7개, base는 직전 90일 하루 평균
-export type PortKind = 'port' | 'chokepoint';
-export type VesselType = 'container' | 'dry_bulk' | 'general_cargo' | 'roro' | 'tanker';
-export type Port = {
-  id: string;
-  kind: PortKind;
-  name: string;
-  country: string;
-  lat: number;
-  lng: number;
-  days: number[];
-  base: number;
-  byType: Record<VesselType, number>;
-};
-export type PortsData = { builtAt: number; through: Record<PortKind, string>; items: Port[] };
-
-export type LayerKey = 'quake' | 'storm' | 'tornado' | 'fire' | 'launch' | 'sat' | 'aurora' | 'port';
-export const LAYERS: LayerKey[] = ['quake', 'storm', 'tornado', 'fire', 'launch', 'sat', 'aurora', 'port'];
+export type LayerKey = 'quake' | 'storm' | 'tornado' | 'fire' | 'launch' | 'sat' | 'aurora' | 'animal';
+export const LAYERS: LayerKey[] = ['quake', 'storm', 'tornado', 'fire', 'launch', 'sat', 'aurora', 'animal'];
 
 export const MINUTE = 60_000;
 export const HOUR = 60 * MINUTE;
@@ -85,7 +69,7 @@ export type Selection =
   | { kind: 'storm'; storm: Storm }
   | { kind: 'tornado'; tornado: TornadoWarning }
   | { kind: 'aurora' }
-  | { kind: 'port'; port: Port };
+  | { kind: 'animal'; key: string };
 
 export type LayerStatus = { state: 'loading' | 'ok' | 'error'; fetchedAt?: number; stale?: boolean };
 
