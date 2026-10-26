@@ -57,12 +57,14 @@ const GIBS_TILE: TileUrl = (x, y, level) =>
 // 타일 모드의 밤: 조명을 돌리면 지진 점까지 어두워지므로 반투명 반구를 덮는다
 const NIGHT_MATERIAL = new MeshBasicMaterial({ color: '#000000', transparent: true, opacity: 0.55, depthWrite: false });
 // 항만 점: 모양 2개·재질 5개를 모든 점이 같이 쓴다(점마다 새 재질 → 셰이더 재컴파일)
+// three-globe의 deallocate()가 objectsData가 바뀔 때(레이어 토글·데이터 갱신) 이들을 dispose한다 — three.js가 다시 올리므로
+// 그때 한 번 재연결될 뿐, 재생 중에는 일어나지 않는다
 const PORT_GEOM = new SphereGeometry(0.35, 8, 6);
 const CHOKE_GEOM = new SphereGeometry(0.7, 12, 8);
 const PORT_MATERIAL = Object.fromEntries(
   Object.entries(PORT_COLOR).map(([k, color]) => [k, new MeshBasicMaterial({ color })]),
 ) as Record<PortTrend, MeshBasicMaterial>;
-const PORT_ALT = 0.004;
+const PORT_ALT = 0.008; // 타일 모드 밤 덮개(0.004)보다 위 — 해협 구(반지름 0.7)가 표면 아래로 파묻히지 않게
 
 export function GlobeView(props: GlobeProps) {
   const el = useRef<HTMLDivElement>(null);

@@ -1,6 +1,7 @@
 export const TYPES = ['container', 'dry_bulk', 'general_cargo', 'roro', 'tanker'];
 export const TOP_PORTS = 300;
 export const MIN_PORTS = 100; // 이보다 적으면 PortWatch 부분 응답으로 보고 직전 값을 쓴다
+export const MIN_CHOKEPOINTS = 20; // 해협도 같다 — 이보다 적으면 부분 응답으로 보고 직전 값을 쓴다
 export const BASE_DAYS = 90;
 
 // 합계·선종 필드 이름이 항만(portcalls_*)과 해협(n_*)에서 다르다

@@ -160,6 +160,7 @@ function PortBody({ selection, portsThrough, now }: Props) {
   const max = Math.max(p.base, ...p.days, 1);
   const win = through ? portWindow(through) : null;
   const shares = typeShares(p.byType);
+  const pct = ratio === null ? null : Math.round((ratio - 1) * 100);
   return (
     <>
       <h2>{msg.portKind[p.kind]}</h2>
@@ -173,7 +174,7 @@ function PortBody({ selection, portsThrough, now }: Props) {
       </div>
       <dl className="num">
         <dt>{msg.vsUsual}</dt>
-        <dd>{ratio === null ? '—' : `${ratio >= 1 ? '+' : ''}${Math.round((ratio - 1) * 100)}%`}</dd>
+        <dd>{pct === null ? '—' : `${pct > 0 ? '+' : ''}${pct}%`}</dd>
         <dt>{msg.vessels7d}</dt>
         <dd>{total.toLocaleString(lang)}</dd>
         {shares.length > 0 && (

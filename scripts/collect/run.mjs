@@ -4,7 +4,7 @@
 // 비행(OpenSky)은 서면 허가 대기 — 허가되면 여기에 수집을 더하고 cron을 매시로 바꾼다
 import { appendFile, mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { buildItems, FIELDS, MIN_PORTS, shiftDate, topSums, TOP_PORTS, TYPES } from './ports.mjs';
+import { buildItems, FIELDS, MIN_CHOKEPOINTS, MIN_PORTS, shiftDate, topSums, TOP_PORTS, TYPES } from './ports.mjs';
 
 const SITE = process.env.SITE_URL ?? 'https://pulse.joon.is-a.dev/';
 const ARCGIS = 'https://services9.arcgis.com/weJ1QsnbMYJlCHdG/arcgis/rest/services';
@@ -34,7 +34,7 @@ async function previous(path) {
 // ArcGIS는 한 번에 1,000행까지 — exceededTransferLimit이면 resultOffset으로 넘긴다. limit에 닿으면 멈춘다
 async function arcgis(service, params, limit = Infinity) {
   const rows = [];
-  for (let offset = 0; ; offset += 1000) {
+  for (let offset = 0; ; offset = rows.length) {
     const res = await fetch(`${ARCGIS}/${service}/FeatureServer/0/query`, {
       method: 'POST',
       // resultOffset=0 을 보내면 outStatistics 질의가 400이라 첫 쪽에는 싣지 않는다
@@ -90,6 +90,7 @@ async function collectPorts(prev) {
   try {
     const [port, chokepoint] = await Promise.all([collectKind('port'), collectKind('chokepoint')]);
     if (port.items.length < MIN_PORTS) throw new Error(`portwatch: ${port.items.length} ports`);
+    if (chokepoint.items.length < MIN_CHOKEPOINTS) throw new Error(`portwatch: ${chokepoint.items.length} chokepoints`);
     return { builtAt: now, through: { port: port.through, chokepoint: chokepoint.through }, items: [...chokepoint.items, ...port.items] };
   } catch (err) {
     console.warn(`ports skipped: ${err.message}`);

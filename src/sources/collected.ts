@@ -1,4 +1,4 @@
-import { HOUR, isNum, validCoord, type Loaded, type Port, type PortsData } from '../model.ts';
+import { DAY, HOUR, isNum, validCoord, type Loaded, type Port, type PortsData } from '../model.ts';
 import { withCache } from '../lib/cache.ts';
 import { fetchJson } from './http.ts';
 
@@ -26,19 +26,30 @@ function isPort(x: unknown): x is Port {
   );
 }
 
+const isDay = (x: unknown): x is string => typeof x === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x);
+
 export function parsePorts(json: unknown): PortsData | null {
   const j = json as { builtAt?: unknown; through?: Record<string, unknown>; items?: unknown } | null;
   const through = j?.through;
-  if (!isNum(j?.builtAt) || typeof through?.port !== 'string' || typeof through.chokepoint !== 'string' || !Array.isArray(j.items)) {
+  if (!isNum(j?.builtAt) || !isDay(through?.port) || !isDay(through?.chokepoint) || !Array.isArray(j.items)) {
     return null;
   }
-  return { builtAt: j.builtAt, through: { port: through.port, chokepoint: through.chokepoint }, items: (j.items as unknown[]).filter(isPort) };
+  return { builtAt: j.builtAt, through: { port: through.port as string, chokepoint: through.chokepoint as string }, items: (j.items as unknown[]).filter(isPort) };
 }
 
-export function loadPorts(now = Date.now()): Promise<Loaded<PortsData>> {
-  return withCache('pp:ports', 6 * HOUR, now, async () => {
+// 하루 한 번 도는 수집기가 멈추면 6시간 캐시는 계속 '신선'해 보인다 — 만든 지 3일이 넘으면 헤더의 '오래된 데이터' 표시를 띄운다
+// fetchedAt도 builtAt으로 둔다: 같은 파일을 다시 읽어도 값이 같아 App의 applied 가드가 재적용을 막고, 새 파일이 오면 값이 바뀐다
+export const PORTS_STALE_MS = 3 * DAY;
+
+export function portsFreshness(r: Loaded<PortsData>, now: number): Loaded<PortsData> {
+  return { ...r, fetchedAt: r.value.builtAt, stale: r.stale || now - r.value.builtAt > PORTS_STALE_MS };
+}
+
+export async function loadPorts(now = Date.now()): Promise<Loaded<PortsData>> {
+  const r = await withCache('pp:ports', 6 * HOUR, now, async () => {
     const data = parsePorts(await fetchJson(dataUrl('ports.json'), 15_000));
     if (!data) throw new Error('invalid ports.json');
     return data;
   });
+  return portsFreshness(r, now);
 }

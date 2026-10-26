@@ -277,7 +277,9 @@ export default function App() {
               ? { kind: 'storm', storm: storms.find((s) => s.id === selected.storm.id) ?? selected.storm }
               : selected.kind === 'tornado'
                 ? { kind: 'tornado', tornado: tornadoes.find((w) => w.id === selected.tornado.id) ?? selected.tornado }
-                : selected
+                : selected.kind === 'port'
+                  ? { kind: 'port', port: ports?.items.find((x) => x.id === selected.port.id) ?? selected.port }
+                  : selected
           }
           t={t}
           iss={iss}
