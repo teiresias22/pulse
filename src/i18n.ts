@@ -2,7 +2,7 @@ const ko = {
   title: 'Pulse',
   tagline: '지난 7일, 지구의 맥박',
   live: '라이브',
-  layer: { quake: '지진', storm: '태풍', tornado: '토네이도', fire: '산불', launch: '발사', iss: 'ISS', aurora: '오로라' },
+  layer: { quake: '지진', storm: '태풍', tornado: '토네이도', fire: '산불', launch: '발사', iss: 'ISS', aurora: '오로라', port: '항만' },
   retry: '다시 시도',
   loading: '불러오는 중',
   failed: '불러오지 못했어요',
@@ -21,6 +21,15 @@ const ko = {
   stormCat: { ts: '열대폭풍', c12: '1–2등급', c3: '3등급 이상' },
   tornadoLegend: '토네이도 경보(미국)',
   auroraLegend: '오로라 띠(Kp 근사)',
+  portLegend: '최근 7일 입항 — 주황 감소 · 청록 증가',
+  portKind: { port: '항만', chokepoint: '해협' },
+  portRange: (from: string, to: string, lag: number) => `${from}–${to} 기준(약 ${lag}일 늦은 데이터)`,
+  vsUsual: '평소 대비',
+  vessels7d: '7일 선박 수',
+  vesselMix: '선종',
+  vessel: { container: '컨테이너', dry_bulk: '벌크', general_cargo: '일반화물', roro: '로로', tanker: '탱커' },
+  portBars: (total: number, base: number) => `최근 7일 ${total}척, 평소 하루 ${base}척`,
+  portNote: '평소 = 직전 90일 하루 평균. IMF PortWatch(AIS 기반) 추정치예요.',
   wind: '최대 풍속',
   category: '등급',
   lastFix: '마지막 관측',
@@ -57,7 +66,7 @@ const en: typeof ko = {
   title: 'Pulse',
   tagline: 'The planet’s pulse, last 7 days',
   live: 'Live',
-  layer: { quake: 'Quakes', storm: 'Storms', tornado: 'Tornadoes', fire: 'Wildfires', launch: 'Launches', iss: 'ISS', aurora: 'Aurora' },
+  layer: { quake: 'Quakes', storm: 'Storms', tornado: 'Tornadoes', fire: 'Wildfires', launch: 'Launches', iss: 'ISS', aurora: 'Aurora', port: 'Ports' },
   retry: 'Retry',
   loading: 'Loading',
   failed: 'Failed to load',
@@ -76,6 +85,15 @@ const en: typeof ko = {
   stormCat: { ts: 'Tropical storm', c12: 'Category 1–2', c3: 'Category 3+' },
   tornadoLegend: 'Tornado warning (US)',
   auroraLegend: 'Aurora band (Kp estimate)',
+  portLegend: 'Port calls, last 7 days — orange down · teal up',
+  portKind: { port: 'Port', chokepoint: 'Chokepoint' },
+  portRange: (from: string, to: string, lag: number) => `${from}–${to} (data lags ~${lag} days)`,
+  vsUsual: 'vs. usual',
+  vessels7d: 'Vessels, 7 days',
+  vesselMix: 'Vessel mix',
+  vessel: { container: 'Container', dry_bulk: 'Dry bulk', general_cargo: 'General cargo', roro: 'Ro-Ro', tanker: 'Tanker' },
+  portBars: (total: number, base: number) => `${total} vessels in the last 7 days, usually ${base} a day`,
+  portNote: 'Usual = daily average of the previous 90 days. Estimates from IMF PortWatch (AIS-based).',
   wind: 'Max wind',
   category: 'Category',
   lastFix: 'Last fix',
@@ -116,6 +134,12 @@ const utc = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit
 
 export function fmtTime(ms: number): string {
   return `${local.format(ms)} (UTC ${utc.format(ms)})`;
+}
+
+const dayFmt = new Intl.DateTimeFormat(lang, { month: 'numeric', day: 'numeric', timeZone: 'UTC' });
+
+export function fmtDay(ms: number): string {
+  return dayFmt.format(ms);
 }
 
 export function fmtAgo(ms: number, now: number): string {

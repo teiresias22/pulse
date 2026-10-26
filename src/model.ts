@@ -46,8 +46,8 @@ export type Port = {
 };
 export type PortsData = { builtAt: number; through: Record<PortKind, string>; items: Port[] };
 
-export type LayerKey = 'quake' | 'storm' | 'tornado' | 'fire' | 'launch' | 'iss' | 'aurora';
-export const LAYERS: LayerKey[] = ['quake', 'storm', 'tornado', 'fire', 'launch', 'iss', 'aurora'];
+export type LayerKey = 'quake' | 'storm' | 'tornado' | 'fire' | 'launch' | 'iss' | 'aurora' | 'port';
+export const LAYERS: LayerKey[] = ['quake', 'storm', 'tornado', 'fire', 'launch', 'iss', 'aurora', 'port'];
 
 export const MINUTE = 60_000;
 export const HOUR = 60 * MINUTE;
@@ -62,7 +62,8 @@ export type Selection =
   | { kind: 'iss' }
   | { kind: 'storm'; storm: Storm }
   | { kind: 'tornado'; tornado: TornadoWarning }
-  | { kind: 'aurora' };
+  | { kind: 'aurora' }
+  | { kind: 'port'; port: Port };
 
 export type LayerStatus = { state: 'loading' | 'ok' | 'error'; fetchedAt?: number; stale?: boolean };
 
