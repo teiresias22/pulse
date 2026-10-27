@@ -5,7 +5,7 @@ import { loadTornadoes } from './sources/nws.ts';
 import { loadKp } from './sources/kp.ts';
 import { kpAt } from './lib/aurora.ts';
 import { loadAnimals } from './sources/collected.ts';
-import { clusterAnimals, visibleAnimals, type AnimalCluster } from './lib/animals.ts';
+import { ANIMAL_GROUPS, clusterAnimals, visibleAnimals, type AnimalCluster } from './lib/animals.ts';
 import { loadEonet, type EonetData } from './sources/eonet.ts';
 import { loadSats, makePropagator } from './sources/satellites.ts';
 import { dockedTo, isSatStale, orbitPath, type SatOnGlobe, type SatOrbit } from './lib/satellites.ts';
@@ -18,7 +18,7 @@ import { Scrubber } from './components/Scrubber.tsx';
 import { timeRange, visibleFires, visibleLaunches, visibleQuakes } from './lib/timeline.ts';
 import { decodeHash, encodeHash } from './lib/hash.ts';
 import { track } from './lib/analytics.ts';
-import { HOUR, LAYERS, MINUTE, SPEEDS, type LayerKey, type LayerStatus, type KpPoint, type Loaded, type AnimalsData, type PulseEvent, type Sat, type SatPos, type Selection, type Storm, type TornadoWarning } from './model.ts';
+import { HOUR, LAYERS, MINUTE, SPEEDS, type LayerKey, type LayerStatus, type KpPoint, type Loaded, type AnimalsData, type AnimalGroup, type PulseEvent, type Sat, type SatPos, type Selection, type Storm, type TornadoWarning } from './model.ts';
 import './App.css';
 
 // globe.gl·three는 무거워서 별도 청크로 — 헤더·스크러버가 먼저 그려지고 WebGL 없는 폴백은 받지 않는다
@@ -42,6 +42,7 @@ export default function App() {
     initial.t === null ? Date.now() : Math.min(range.max, Math.max(range.min, initial.t)),
   );
   const [layers, setLayers] = useState<LayerKey[]>(initial.layers);
+  const [animalGroups, setAnimalGroups] = useState<AnimalGroup[]>(initial.animals);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(SPEEDS[0]);
   const [quakes, setQuakes] = useState<PulseEvent[]>([]);
@@ -176,10 +177,10 @@ export default function App() {
   useEffect(() => {
     if (playing) return;
     const id = window.setTimeout(() => {
-      history.replaceState(null, '', encodeHash({ t: hashT, layers }));
+      history.replaceState(null, '', encodeHash({ t: hashT, layers, animals: animalGroups }));
     }, 500);
     return () => window.clearTimeout(id);
-  }, [playing, hashT, layers]);
+  }, [playing, hashT, layers, animalGroups]);
 
   const scrubTo = useCallback(
     (next: number) => {
@@ -253,8 +254,11 @@ export default function App() {
   // 동물: 지금 t에 보이는 관찰을 칸·묶음별로. 카드는 같은 key의 칸을 다시 찾는다(그 칸이 없으면 그리지 않는다)
   const animalOn = layers.includes('animal');
   const animalClusters = useMemo(
-    () => (animalOn && animals ? clusterAnimals(visibleAnimals(animals.items, t)) : NO_ANIMALS),
-    [animalOn, animals, t],
+    () =>
+      animalOn && animals
+        ? clusterAnimals(visibleAnimals(animals.items.filter((a) => animalGroups.includes(a.group)), t))
+        : NO_ANIMALS,
+    [animalOn, animals, animalGroups, t],
   );
   const selectedCluster = selected?.kind === 'animal' ? animalClusters.find((c) => c.key === selected.key) ?? null : null;
   const toggleLayer = (k: LayerKey) => {
@@ -267,6 +271,11 @@ export default function App() {
     setLayers((ls) => LAYERS.filter((l) => (l === k ? !ls.includes(l) : ls.includes(l))));
     track('layer_toggle', { layer: k, on: !layers.includes(k) });
   };
+  const toggleAnimal = (g: AnimalGroup) => {
+    const on = !animalGroups.includes(g);
+    setAnimalGroups((gs) => ANIMAL_GROUPS.filter((x) => (x === g ? !gs.includes(x) : gs.includes(x))));
+    track('animal_filter', { group: g, on });
+  };
   const select = (s: Selection) => {
     // 같은 위성을 다시 누른 게 아니면 따라가기를 끈다(새 위성 자동 추적·지진 클릭 시 카메라 고정 방지)
     if (!(s.kind === 'sat' && selected?.kind === 'sat' && s.id === selected.id)) setFollow(false);
@@ -278,7 +287,7 @@ export default function App() {
     if (f && selectedSat) track('follow_sat', { sat_id: selectedSat.id });
   };
   const shareUrl = () =>
-    `${window.location.origin}${window.location.pathname}${encodeHash({ t, layers })}`;
+    `${window.location.origin}${window.location.pathname}${encodeHash({ t, layers, animals: animalGroups })}`;
 
   if (!webgl) return <Fallback quakes={quakes} launches={launches} />;
 
@@ -309,10 +318,12 @@ export default function App() {
         status={status}
         now={live ? t : anchor}
         onToggle={toggleLayer}
+        animalGroups={animalGroups}
+        onToggleAnimal={toggleAnimal}
         onRetry={(k) => void load(k)}
         shareUrl={shareUrl}
       />
-      <Legend animalOn={animalOn} />
+      <Legend animalGroups={animalOn ? animalGroups : []} />
       {selected && (selected.kind !== 'animal' || selectedCluster) && (
         <EventCard
           selection={

@@ -1,8 +1,10 @@
 import { msg } from '../i18n.ts';
+import { ANIMAL_ICON } from '../lib/animals.ts';
+import type { AnimalGroup } from '../model.ts';
 
-type Props = { animalOn: boolean };
+type Props = { animalGroups: AnimalGroup[] }; // 범례에 보일 동물(레이어가 꺼져 있으면 빈 배열)
 
-export function Legend({ animalOn }: Props) {
+export function Legend({ animalGroups }: Props) {
   return (
     <details className="legend panel" open={window.innerWidth > 640}>
       <summary>{msg.legendTitle}</summary>
@@ -18,7 +20,7 @@ export function Legend({ animalOn }: Props) {
         <li><span className="sym sym-aurora">〰</span> {msg.auroraLegend}</li>
         <li><span className="sym">▲</span> {msg.status.success} · <span className="sym sym-failure">✕</span> {msg.status.failure} · <span className="sym sym-upcoming">◇</span> {msg.status.upcoming}</li>
         <li><span className="sym">◉</span> {msg.station} · <span className="sym sym-sat">•</span> {msg.satellite}</li>
-        {animalOn && <li><span className="sym">🐻🐘🐅🐧🐢🦭🐋</span> {msg.animalLegend}</li>}
+        {animalGroups.length > 0 && <li><span className="sym">{animalGroups.map((g) => ANIMAL_ICON[g]).join('')}</span> {msg.animalLegend}</li>}
       </ul>
     </details>
   );

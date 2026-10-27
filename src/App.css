@@ -135,6 +135,7 @@ body {
 @keyframes pulse { 50% { opacity: 0.3; } }
 .toggles { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
 .toggle { display: inline-flex; align-items: center; gap: 4px; }
+.subtoggles { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 .btn-small { min-height: 28px; padding: 2px 8px; font-size: 12px; }
 .warn { color: var(--warn); }
 .warn-text { color: var(--warn); font-size: 13px; }
