@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { LAYERS, type LayerKey, type LayerStatus } from '../model.ts';
+import { LAYERS, type AnimalGroup, type LayerKey, type LayerStatus } from '../model.ts';
+import { ANIMAL_GROUPS, ANIMAL_ICON } from '../lib/animals.ts';
 import { fmtAgo, msg } from '../i18n.ts';
 import { track } from '../lib/analytics.ts';
 
@@ -12,6 +13,8 @@ type Props = {
   now: number;
   onToggle: (k: LayerKey) => void;
   onRetry: (k: LayerKey) => void;
+  animalGroups: AnimalGroup[];
+  onToggleAnimal: (g: AnimalGroup) => void;
   shareUrl: () => string;
 };
 
@@ -79,6 +82,24 @@ export function Header(p: Props) {
           {copied ? msg.copied : msg.share}
         </button>
       </div>
+      {p.layers.includes('animal') && (
+        <div className="subtoggles">
+          {ANIMAL_GROUPS.map((g) => (
+            <button
+              key={g}
+              type="button"
+              className={`btn${p.animalGroups.includes(g) ? ' btn-on' : ''}`}
+              aria-pressed={p.animalGroups.includes(g)}
+              onClick={() => p.onToggleAnimal(g)}
+              title={msg.animalGroup[g]}
+              aria-label={msg.animalGroup[g]}
+            >
+              <span aria-hidden="true">{ANIMAL_ICON[g]}</span>
+              <span className="toggle-label"> {msg.animalGroup[g]}</span>
+            </button>
+          ))}
+        </div>
+      )}
     </header>
   );
 }
