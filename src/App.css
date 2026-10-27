@@ -25,13 +25,14 @@ body {
 
 .app { position: relative; height: 100%; }
 
-.globe { position: absolute; inset: 0; }
+.globe { position: absolute; inset: 0; touch-action: none; }
 /* globe.gl은 showNavInfo를 노출하지 않고 내부에서 끈다 — 기본값이 바뀌어도 숨긴다 */
 .scene-nav-info { display: none !important; }
 
 .num { font-variant-numeric: tabular-nums; }
 
 .marker {
+  touch-action: none;
   border: 0;
   background: none;
   color: var(--accent);

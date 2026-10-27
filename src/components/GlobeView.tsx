@@ -293,6 +293,18 @@ export function GlobeView(props: GlobeProps) {
     controls.addEventListener('start', onStart);
     controls.addEventListener('end', onEnd);
 
+    // 마커(HTML 버튼) 위 트랙패드 핀치(ctrl+wheel)·Safari 핀치가 페이지 확대로 새지 않게 막고, 휠은 캔버스로 넘겨 지구본을 확대한다
+    const canvas = g.renderer().domElement;
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey) return;
+      e.preventDefault();
+      if (e.target !== canvas) canvas.dispatchEvent(new WheelEvent('wheel', e));
+    };
+    const stopGesture = (e: Event) => e.preventDefault();
+    host.addEventListener('wheel', onWheel, { passive: false });
+    host.addEventListener('gesturestart', stopGesture);
+    host.addEventListener('gesturechange', stopGesture);
+
     const ro = new ResizeObserver(() => g.width(host.clientWidth).height(host.clientHeight));
     ro.observe(host);
     // 탭이 숨겨지면 렌더 루프를 멈춘다
@@ -306,6 +318,9 @@ export function GlobeView(props: GlobeProps) {
       window.clearTimeout(resumeTimer.current);
       controls.removeEventListener('start', onStart);
       controls.removeEventListener('end', onEnd);
+      host.removeEventListener('wheel', onWheel);
+      host.removeEventListener('gesturestart', stopGesture);
+      host.removeEventListener('gesturechange', stopGesture);
       const m = dayNight.current;
       if (m) {
         (m.uniforms.dayTexture.value as { dispose(): void }).dispose();
